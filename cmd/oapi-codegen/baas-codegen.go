@@ -194,6 +194,10 @@ func main() {
 		if err != nil {
 			errExit("error writing generated client code to file: %s", err)
 		}
+		err = ioutil.WriteFile(tagPath+"/main.go", []byte(code.Main), 0644)
+		if err != nil {
+			errExit("error writing generated main code to file: %s", err)
+		}
 
 		println("-------------------------------------")
 	}

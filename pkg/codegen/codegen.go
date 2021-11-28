@@ -50,6 +50,7 @@ type Options struct {
 type Code struct {
 	Types  string
 	Client string
+	Main   string
 }
 
 // goImport represents a go package to be imported in the generated code
@@ -152,7 +153,12 @@ func Generate(swagger *openapi3.T, packageName string, opts Options) (*Code, err
 		if err != nil {
 			return nil, fmt.Errorf("error generating constants: %w", err)
 		}
+	}
 
+	var mainOut string
+	mainOut, err = GenerateMain(t, ops)
+	if err != nil {
+		return nil, fmt.Errorf("error generating main: %w", err)
 	}
 
 	// var echoServerOut string
@@ -290,9 +296,11 @@ func Generate(swagger *openapi3.T, packageName string, opts Options) (*Code, err
 
 	types, err := renderString(opts, t, packageName, []string{typeDefinitions, constantDefinitions})
 	client, err := renderString(opts, t, packageName, []string{clientOut, clientWithResponsesOut})
+	main, err := renderString(opts, t, packageName, []string{mainOut})
 	c := Code{
 		Types:  types,
 		Client: client,
+		Main:   main,
 	}
 	return &c, nil
 }
@@ -340,6 +348,32 @@ func renderString(opts Options, t *template.Template, packageName string, string
 	}
 
 	return string(outBytes), nil
+}
+
+// Generates main.go file
+func GenerateMain(t *template.Template, ops []OperationDefinition) (string, error) {
+	constants := Constants{
+		SecuritySchemeProviderNames: []string{},
+	}
+
+	providerNameMap := map[string]struct{}{}
+	for _, op := range ops {
+		for _, def := range op.SecurityDefinitions {
+			providerName := SanitizeGoIdentity(def.ProviderName)
+			providerNameMap[providerName] = struct{}{}
+		}
+	}
+
+	var providerNames []string
+	for providerName := range providerNameMap {
+		providerNames = append(providerNames, providerName)
+	}
+
+	sort.Strings(providerNames)
+
+	constants.SecuritySchemeProviderNames = append(constants.SecuritySchemeProviderNames, providerNames...)
+
+	return GenerateTemplates([]string{"main.tmpl"}, t, constants)
 }
 
 func GenerateTypeDefinitions(t *template.Template, swagger *openapi3.T, ops []OperationDefinition, excludeSchemas []string) (string, error) {
