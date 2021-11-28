@@ -91,6 +91,11 @@ func main() {
 		os.Exit(1)
 	}
 
+	if len(flagOutputFile) == 0 {
+		fmt.Println("Please specify an output path with the -o option")
+		os.Exit(1)
+	}
+
 	swagger, err := util.LoadSwagger(flag.Arg(0))
 	if err != nil {
 		errExit("error loading swagger spec in %s\n: %s", flag.Arg(0), err)
@@ -166,20 +171,31 @@ func main() {
 
 		opts.IncludeTags = nil
 		opts.IncludeTags = append(opts.IncludeTags, t)
-		code, err := codegen.Generate(swagger, cfg.PackageName, opts)
+		code, err := codegen.Generate(swagger, strings.ToLower(t), opts)
 		if err != nil {
 			errExit("error generating code: %s\n", err)
 		}
 
-		if cfg.OutputFile != "" {
-			err = ioutil.WriteFile(cfg.OutputFile, []byte(code), 0644)
-			if err != nil {
-				errExit("error writing generated code to file: %s", err)
-			}
-		} else {
-			fmt.Println(code)
+		println("---[ TYPES ]------------------------")
+		fmt.Println(code.Types)
+		println("---[ CLIENT ]------------------------")
+		fmt.Println(code.Client)
+
+		tagPath := cfg.OutputFile + "/" + strings.ToLower(t)
+		err = os.Mkdir(tagPath, 0755)
+		if err != nil && !os.IsExist(err) {
+			errExit("error creating tag-specific output path: %s", err)
 		}
-		println("-----------------------------")
+		err = ioutil.WriteFile(tagPath+"/types.go", []byte(code.Types), 0644)
+		if err != nil {
+			errExit("error writing generated types code to file: %s", err)
+		}
+		err = ioutil.WriteFile(tagPath+"/client.go", []byte(code.Client), 0644)
+		if err != nil {
+			errExit("error writing generated client code to file: %s", err)
+		}
+
+		println("-------------------------------------")
 	}
 }
 

@@ -47,6 +47,11 @@ type Options struct {
 	ExcludeSchemas     []string          // Exclude from generation schemas with given names. Ignored when empty.
 }
 
+type Code struct {
+	Types  string
+	Client string
+}
+
 // goImport represents a go package to be imported in the generated code
 type goImport struct {
 	Name string // package name
@@ -103,7 +108,7 @@ func constructImportMapping(input map[string]string) importMap {
 // Uses the Go templating engine to generate all of our server wrappers from
 // the descriptions we've built up above from the schema objects.
 // opts defines
-func Generate(swagger *openapi3.T, packageName string, opts Options) (string, error) {
+func Generate(swagger *openapi3.T, packageName string, opts Options) (*Code, error) {
 	importMapping = constructImportMapping(opts.ImportMapping)
 
 	filterOperationsByTag(swagger, opts)
@@ -118,7 +123,7 @@ func Generate(swagger *openapi3.T, packageName string, opts Options) (string, er
 	// above
 	t, err := templates.Parse(t)
 	if err != nil {
-		return "", fmt.Errorf("error parsing oapi-codegen templates: %w", err)
+		return nil, fmt.Errorf("error parsing oapi-codegen templates: %w", err)
 	}
 
 	// Override built-in templates with user-provided versions
@@ -126,59 +131,59 @@ func Generate(swagger *openapi3.T, packageName string, opts Options) (string, er
 		if _, ok := opts.UserTemplates[tpl.Name()]; ok {
 			utpl := t.New(tpl.Name())
 			if _, err := utpl.Parse(opts.UserTemplates[tpl.Name()]); err != nil {
-				return "", fmt.Errorf("error parsing user-provided template %q: %w", tpl.Name(), err)
+				return nil, fmt.Errorf("error parsing user-provided template %q: %w", tpl.Name(), err)
 			}
 		}
 	}
 
 	ops, err := OperationDefinitions(swagger)
 	if err != nil {
-		return "", fmt.Errorf("error creating operation definitions: %w", err)
+		return nil, fmt.Errorf("error creating operation definitions: %w", err)
 	}
 
 	var typeDefinitions, constantDefinitions string
 	if opts.GenerateTypes {
 		typeDefinitions, err = GenerateTypeDefinitions(t, swagger, ops, opts.ExcludeSchemas)
 		if err != nil {
-			return "", fmt.Errorf("error generating type definitions: %w", err)
+			return nil, fmt.Errorf("error generating type definitions: %w", err)
 		}
 
 		constantDefinitions, err = GenerateConstants(t, ops)
 		if err != nil {
-			return "", fmt.Errorf("error generating constants: %w", err)
+			return nil, fmt.Errorf("error generating constants: %w", err)
 		}
 
 	}
 
-	var echoServerOut string
-	if opts.GenerateEchoServer {
-		echoServerOut, err = GenerateEchoServer(t, ops)
-		if err != nil {
-			return "", fmt.Errorf("error generating Go handlers for Paths: %w", err)
-		}
-	}
+	// var echoServerOut string
+	// if opts.GenerateEchoServer {
+	// 	echoServerOut, err = GenerateEchoServer(t, ops)
+	// 	if err != nil {
+	// 		return nil, fmt.Errorf("error generating Go handlers for Paths: %w", err)
+	// 	}
+	// }
 
-	var chiServerOut string
-	if opts.GenerateChiServer {
-		chiServerOut, err = GenerateChiServer(t, ops)
-		if err != nil {
-			return "", fmt.Errorf("error generating Go handlers for Paths: %w", err)
-		}
-	}
+	// var chiServerOut string
+	// if opts.GenerateChiServer {
+	// 	chiServerOut, err = GenerateChiServer(t, ops)
+	// 	if err != nil {
+	// 		return nil, fmt.Errorf("error generating Go handlers for Paths: %w", err)
+	// 	}
+	// }
 
-	var ginServerOut string
-	if opts.GenerateGinServer {
-		ginServerOut, err = GenerateGinServer(t, ops)
-		if err != nil {
-			return "", fmt.Errorf("error generating Go handlers for Paths: %w", err)
-		}
-	}
+	// var ginServerOut string
+	// if opts.GenerateGinServer {
+	// 	ginServerOut, err = GenerateGinServer(t, ops)
+	// 	if err != nil {
+	// 		return nil, fmt.Errorf("error generating Go handlers for Paths: %w", err)
+	// 	}
+	// }
 
 	var clientOut string
 	if opts.GenerateClient {
 		clientOut, err = GenerateClient(t, ops)
 		if err != nil {
-			return "", fmt.Errorf("error generating client: %w", err)
+			return nil, fmt.Errorf("error generating client: %w", err)
 		}
 	}
 
@@ -186,18 +191,113 @@ func Generate(swagger *openapi3.T, packageName string, opts Options) (string, er
 	if opts.GenerateClient {
 		clientWithResponsesOut, err = GenerateClientWithResponses(t, ops)
 		if err != nil {
-			return "", fmt.Errorf("error generating client with responses: %w", err)
+			return nil, fmt.Errorf("error generating client with responses: %w", err)
 		}
 	}
 
-	var inlinedSpec string
-	if opts.EmbedSpec {
-		inlinedSpec, err = GenerateInlinedSpec(t, importMapping, swagger)
-		if err != nil {
-			return "", fmt.Errorf("error generating Go handlers for Paths: %w", err)
-		}
-	}
+	// var inlinedSpec string
+	// if opts.EmbedSpec {
+	// 	inlinedSpec, err = GenerateInlinedSpec(t, importMapping, swagger)
+	// 	if err != nil {
+	// 		return nil, fmt.Errorf("error generating Go handlers for Paths: %w", err)
+	// 	}
+	// }
 
+	// var buf bytes.Buffer
+	// w := bufio.NewWriter(&buf)
+
+	// externalImports := importMapping.GoImports()
+	// importsOut, err := GenerateImports(t, externalImports, packageName)
+	// if err != nil {
+	// 	return "", fmt.Errorf("error generating imports: %w", err)
+	// }
+
+	// _, err = w.WriteString(importsOut)
+	// if err != nil {
+	// 	return "", fmt.Errorf("error writing imports: %w", err)
+	// }
+
+	// _, err = w.WriteString(constantDefinitions)
+	// if err != nil {
+	// 	return "", fmt.Errorf("error writing constants: %w", err)
+	// }
+
+	// _, err = w.WriteString(typeDefinitions)
+	// if err != nil {
+	// 	return "", fmt.Errorf("error writing type definitions: %w", err)
+
+	// }
+
+	// if opts.GenerateClient {
+	// 	_, err = w.WriteString(clientOut)
+	// 	if err != nil {
+	// 		return "", fmt.Errorf("error writing client: %w", err)
+	// 	}
+	// 	_, err = w.WriteString(clientWithResponsesOut)
+	// 	if err != nil {
+	// 		return "", fmt.Errorf("error writing client: %w", err)
+	// 	}
+	// }
+
+	// if opts.GenerateEchoServer {
+	// 	_, err = w.WriteString(echoServerOut)
+	// 	if err != nil {
+	// 		return "", fmt.Errorf("error writing server path handlers: %w", err)
+	// 	}
+	// }
+
+	// if opts.GenerateChiServer {
+	// 	_, err = w.WriteString(chiServerOut)
+	// 	if err != nil {
+	// 		return "", fmt.Errorf("error writing server path handlers: %w", err)
+	// 	}
+	// }
+
+	// if opts.GenerateGinServer {
+	// 	_, err = w.WriteString(ginServerOut)
+	// 	if err != nil {
+	// 		return "", fmt.Errorf("error writing server path handlers: %w", err)
+	// 	}
+	// }
+
+	// if opts.EmbedSpec {
+	// 	_, err = w.WriteString(inlinedSpec)
+	// 	if err != nil {
+	// 		return "", fmt.Errorf("error writing inlined spec: %w", err)
+	// 	}
+	// }
+
+	// err = w.Flush()
+	// if err != nil {
+	// 	return "", fmt.Errorf("error flushing output buffer: %w", err)
+	// }
+
+	// // remove any byte-order-marks which break Go-Code
+	// goCode := SanitizeCode(buf.String())
+
+	// // The generation code produces unindented horrors. Use the Go Imports
+	// // to make it all pretty.
+	// if opts.SkipFmt {
+	// 	return goCode, nil
+	// }
+
+	// outBytes, err := imports.Process(packageName+".go", []byte(goCode), nil)
+	// if err != nil {
+	// 	fmt.Println(goCode)
+	// 	return "", fmt.Errorf("error formatting Go code: %w", err)
+	// }
+	// return string(outBytes), nil
+
+	types, err := renderString(opts, t, packageName, []string{typeDefinitions, constantDefinitions})
+	client, err := renderString(opts, t, packageName, []string{clientOut, clientWithResponsesOut})
+	c := Code{
+		Types:  types,
+		Client: client,
+	}
+	return &c, nil
+}
+
+func renderString(opts Options, t *template.Template, packageName string, strings []string) (string, error) {
 	var buf bytes.Buffer
 	w := bufio.NewWriter(&buf)
 
@@ -212,53 +312,10 @@ func Generate(swagger *openapi3.T, packageName string, opts Options) (string, er
 		return "", fmt.Errorf("error writing imports: %w", err)
 	}
 
-	_, err = w.WriteString(constantDefinitions)
-	if err != nil {
-		return "", fmt.Errorf("error writing constants: %w", err)
-	}
-
-	_, err = w.WriteString(typeDefinitions)
-	if err != nil {
-		return "", fmt.Errorf("error writing type definitions: %w", err)
-
-	}
-
-	if opts.GenerateClient {
-		_, err = w.WriteString(clientOut)
+	for i, s := range strings {
+		_, err = w.WriteString(s)
 		if err != nil {
-			return "", fmt.Errorf("error writing client: %w", err)
-		}
-		_, err = w.WriteString(clientWithResponsesOut)
-		if err != nil {
-			return "", fmt.Errorf("error writing client: %w", err)
-		}
-	}
-
-	if opts.GenerateEchoServer {
-		_, err = w.WriteString(echoServerOut)
-		if err != nil {
-			return "", fmt.Errorf("error writing server path handlers: %w", err)
-		}
-	}
-
-	if opts.GenerateChiServer {
-		_, err = w.WriteString(chiServerOut)
-		if err != nil {
-			return "", fmt.Errorf("error writing server path handlers: %w", err)
-		}
-	}
-
-	if opts.GenerateGinServer {
-		_, err = w.WriteString(ginServerOut)
-		if err != nil {
-			return "", fmt.Errorf("error writing server path handlers: %w", err)
-		}
-	}
-
-	if opts.EmbedSpec {
-		_, err = w.WriteString(inlinedSpec)
-		if err != nil {
-			return "", fmt.Errorf("error writing inlined spec: %w", err)
+			return "", fmt.Errorf("error writing string at index %v: %w", i, err)
 		}
 	}
 
@@ -281,6 +338,7 @@ func Generate(swagger *openapi3.T, packageName string, opts Options) (string, er
 		fmt.Println(goCode)
 		return "", fmt.Errorf("error formatting Go code: %w", err)
 	}
+
 	return string(outBytes), nil
 }
 
