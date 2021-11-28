@@ -1301,6 +1301,41 @@ func GetSwagger() (swagger *openapi3.T, err error) {
     return
 }
 `,
+	"main.tmpl": `func main() {
+	serviceName := "direct-debit"
+
+	// Logging and Tracing
+	logger, metricsFactory := log.Init(serviceName)
+	tracer := tracing.Init(serviceName, metricsFactory, logger)
+
+	// Direct Debit Facility Service
+	var facilityHttpHandler http.Handler
+	{
+		repository, err := facility.NewGormRepository(context.Background(), os.Getenv("POSTGRES_DSN"), tracer, logger)
+		if err != nil {
+			logger.Bg().Fatal("Failed to create facility repository", zap.Error(err))
+		}
+		service := facility.NewService(repository, logger)
+		endPoints := facility.NewEndpointSet(service, logger, tracer)
+		facilityHttpHandler = facility.NewHTTPHandler(endPoints, logger, tracer)
+	}
+
+	// Start Transports
+	go func() error {
+		// HTTP
+		httpHost := ""
+		httpPort := 8085
+		httpAddr := httpHost + ":" + strconv.Itoa(httpPort)
+		logger.Bg().Info("Listening", zap.String("transport", "http"), zap.String("host", httpHost), zap.Int("port", httpPort), zap.String("addr", httpAddr))
+		err := http.ListenAndServe(httpAddr, facilityHttpHandler)
+		logger.Bg().Fatal("Exit", zap.Error(err))
+		return err
+	}()
+
+	// Select Loop
+	select {}
+}
+`,
 	"param-types.tmpl": `{{range .}}{{$opid := .OperationId}}
 {{range .TypeDefinitions}}
 // {{.TypeName}} defines parameters for {{$opid}}.
