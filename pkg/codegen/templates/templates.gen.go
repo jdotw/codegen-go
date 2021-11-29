@@ -973,6 +973,85 @@ func (w *ServerInterfaceWrapper) {{.OperationId}} (ctx echo.Context) error {
 }
 {{end}}
 `,
+	"endpoint.tmpl": `type EndpointSet struct {
+	GetFacilityEndpoint    endpoint.Endpoint
+	CreateFacilityEndpoint endpoint.Endpoint
+	UpdateFacilityEndpoint endpoint.Endpoint
+}
+
+func NewEndpointSet(s DirectDebitFacilityService, logger log.Factory, tracer opentracing.Tracer) EndpointSet {
+	var getFacilityEndpoint endpoint.Endpoint
+	{
+		getFacilityEndpoint = makeGetFacilityEndpoint(s)
+		getFacilityEndpoint = tracing.TraceServer(tracer, "GetFacility")(getFacilityEndpoint)
+	}
+	var createFacilityEndpoint endpoint.Endpoint
+	{
+		createFacilityEndpoint = makeCreateFacilityEndpoint(s, logger)
+		createFacilityEndpoint = tracing.TraceServer(tracer, "CreateFacility")(createFacilityEndpoint)
+	}
+	var updateFacilityEndpoint endpoint.Endpoint
+	{
+		updateFacilityEndpoint = makeUpdateFacilityEndpoint(s)
+		updateFacilityEndpoint = tracing.TraceServer(tracer, "UpdateFacility")(updateFacilityEndpoint)
+	}
+	return EndpointSet{
+		GetFacilityEndpoint:    getFacilityEndpoint,
+		CreateFacilityEndpoint: createFacilityEndpoint,
+		UpdateFacilityEndpoint: updateFacilityEndpoint,
+	}
+}
+
+// Create
+
+type CreateFacilityRequest struct {
+	Facility *api.DirectDebitFacility
+}
+
+func makeCreateFacilityEndpoint(s DirectDebitFacilityService, logger log.Factory) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		logger.For(ctx).Info("CreateFacilityEndpoint received request")
+		req := request.(CreateFacilityRequest)
+		v, err := s.CreateFacility(ctx, req.Facility)
+		if err != nil {
+			return &v, err
+		}
+		return &v, nil
+	}
+}
+
+// Get
+
+type GetFacilityRequest struct {
+	ID string
+}
+
+func makeGetFacilityEndpoint(s DirectDebitFacilityService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		req := request.(GetFacilityRequest)
+		v, err := s.GetFacilityByID(ctx, req.ID)
+		if err != nil {
+			return &v, err
+		}
+		return &v, nil
+	}
+}
+
+// Update
+
+type UpdateFacilityRequest struct {
+	ID       string
+	Facility *api.DirectDebitFacility
+}
+
+func makeUpdateFacilityEndpoint(s DirectDebitFacilityService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		req := request.(UpdateFacilityRequest)
+		v, err := s.UpdateFacility(ctx, req.ID, req.Facility)
+		return &v, err
+	}
+}
+`,
 	"gin-interface.tmpl": `// ServerInterface represents all server handlers.
 type ServerInterface interface {
 {{range .}}{{.SummaryAsComment }}
@@ -1180,6 +1259,65 @@ func (siw *ServerInterfaceWrapper) {{$opid}}(c *gin.Context) {
 }
 {{end}}
 `,
+	"go.mod.tmpl": `module github.com/12kmps/baas-{{.}}
+
+go 1.17
+
+require (
+	github.com/12kmps/baas v0.0.0-20211123223751-51ebccfb0266
+	github.com/deepmap/oapi-codegen v1.9.0
+	github.com/go-kit/kit v0.9.0
+	github.com/gorilla/mux v1.8.0
+	github.com/labstack/echo/v4 v4.6.1
+	github.com/opentracing/opentracing-go v1.2.0
+	github.com/prometheus/client_golang v1.11.0
+	go.uber.org/zap v1.19.1
+	gorm.io/driver/postgres v1.2.2
+	gorm.io/gorm v1.22.3
+	gorm.io/plugin/opentracing v0.0.0-20211008090106-7b0d17ed1816
+)
+
+require (
+	github.com/beorn7/perks v1.0.1 // indirect
+	github.com/cespare/xxhash/v2 v2.1.1 // indirect
+	github.com/go-logfmt/logfmt v0.5.0 // indirect
+	github.com/golang/protobuf v1.5.2 // indirect
+	github.com/jackc/chunkreader/v2 v2.0.1 // indirect
+	github.com/jackc/pgconn v1.10.0 // indirect
+	github.com/jackc/pgio v1.0.0 // indirect
+	github.com/jackc/pgpassfile v1.0.0 // indirect
+	github.com/jackc/pgproto3/v2 v2.1.1 // indirect
+	github.com/jackc/pgservicefile v0.0.0-20200714003250-2b9c44734f2b // indirect
+	github.com/jackc/pgtype v1.8.1 // indirect
+	github.com/jackc/pgx/v4 v4.13.0 // indirect
+	github.com/jinzhu/inflection v1.0.0 // indirect
+	github.com/jinzhu/now v1.1.2 // indirect
+	github.com/json-iterator/go v1.1.12 // indirect
+	github.com/labstack/gommon v0.3.0 // indirect
+	github.com/mattn/go-colorable v0.1.8 // indirect
+	github.com/mattn/go-isatty v0.0.14 // indirect
+	github.com/matttproud/golang_protobuf_extensions v1.0.1 // indirect
+	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
+	github.com/modern-go/reflect2 v1.0.2 // indirect
+	github.com/opentracing-contrib/go-stdlib v1.0.0 // indirect
+	github.com/pkg/errors v0.9.1 // indirect
+	github.com/prometheus/client_model v0.2.0 // indirect
+	github.com/prometheus/common v0.26.0 // indirect
+	github.com/prometheus/procfs v0.6.0 // indirect
+	github.com/uber/jaeger-client-go v2.29.1+incompatible // indirect
+	github.com/uber/jaeger-lib v2.4.1+incompatible // indirect
+	github.com/valyala/bytebufferpool v1.0.0 // indirect
+	github.com/valyala/fasttemplate v1.2.1 // indirect
+	go.uber.org/atomic v1.7.0 // indirect
+	go.uber.org/multierr v1.6.0 // indirect
+	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519 // indirect
+	golang.org/x/net v0.0.0-20210913180222-943fd674d43e // indirect
+	golang.org/x/sys v0.0.0-20211031064116-611d5d643895 // indirect
+	golang.org/x/text v0.3.7 // indirect
+	google.golang.org/grpc v1.42.0 // indirect
+	google.golang.org/protobuf v1.27.1 // indirect
+)
+`,
 	"imports.tmpl": `// Package {{.PackageName}} provides primitives to interact with the openapi HTTP API.
 //
 // Code generated by {{.ModuleName}} version {{.Version}} DO NOT EDIT.
@@ -1308,26 +1446,40 @@ func GetSwagger() (swagger *openapi3.T, err error) {
 	logger, metricsFactory := log.Init(serviceName)
 	tracer := tracing.Init(serviceName, metricsFactory, logger)
 
-	// Direct Debit Facility Service
-	var facilityHttpHandler http.Handler
-	{
-		repository, err := facility.NewGormRepository(context.Background(), os.Getenv("POSTGRES_DSN"), tracer, logger)
+{{range . -}}
+{{$tag := .Tag}}
+{{$tagVar := .TagCamel}}
+{{$tagPkg := .Package}}
+  // {{$tag}} Service
+  var {{$tagVar}}Router *mux.Router
+  {
+		repo, err := {{$tagPkg}}.NewGormRepository(context.Background(), os.Getenv("POSTGRES_DSN"), tracer, logger)
 		if err != nil {
-			logger.Bg().Fatal("Failed to create facility repository", zap.Error(err))
+			logger.Bg().Fatal("Failed to create {{$tagPkg}} repository", zap.Error(err))
 		}
-		service := facility.NewService(repository, logger)
-		endPoints := facility.NewEndpointSet(service, logger, tracer)
-		facilityHttpHandler = facility.NewHTTPHandler(endPoints, logger, tracer)
-	}
+		service := {{$tagPkg}}.NewService(repository, logger)
+		endPoints := {{$tagPkg}}.NewEndpointSet(service, logger, tracer)
+		{{$tagVar}}Router = {{$tagPkg}}.NewHTTPRouter(endPoints, logger, tracer)
+  } 
+{{end}}{{/* range . */}}
+
+  m := tracing.NewServeMux(tracer)
+	m.Handle("/metrics", promhttp.Handler()) // Prometheus
+{{range . -}}
+{{$tag := .Tag}}
+{{$tagVar := .TagCamel}}
+{{$tagPkg := .Package}}
+	m.Handle("/{{$tagPkg}}/", {{$tagVar}}Router)
+{{end}}{{/* range . */}}
 
 	// Start Transports
 	go func() error {
 		// HTTP
 		httpHost := ""
-		httpPort := 8085
+		httpPort := 8080
 		httpAddr := httpHost + ":" + strconv.Itoa(httpPort)
 		logger.Bg().Info("Listening", zap.String("transport", "http"), zap.String("host", httpHost), zap.Int("port", httpPort), zap.String("addr", httpAddr))
-		err := http.ListenAndServe(httpAddr, facilityHttpHandler)
+		err := http.ListenAndServe(httpAddr, m)
 		logger.Bg().Fatal("Exit", zap.Error(err))
 		return err
 	}()
@@ -1343,6 +1495,61 @@ type {{.TypeName}} {{if and (opts.AliasTypes) (.CanAlias)}}={{end}} {{.Schema.Ty
 {{end}}
 {{end}}
 `,
+	"repository-gorm.tmpl": `type gormRepository struct {
+	ctx context.Context
+	db  *gorm.DB
+}
+
+func NewGormRepository(ctx context.Context, connString string, tracer opentracing.Tracer, logger log.Factory) (Repository, error) {
+	var r Repository
+	{
+		db, err := gorm.Open(postgres.Open(connString), &gorm.Config{})
+		if err != nil {
+			logger.For(ctx).Fatal("Failed to open db", zap.Error(err))
+		}
+
+		db.Use(gormopentracing.New(gormopentracing.WithTracer(tracer)))
+
+		err = db.AutoMigrate(&api.DirectDebitFacility{})
+		if err != nil {
+			logger.For(ctx).Fatal("Failed to migrate db", zap.Error(err))
+		}
+
+		r = &gormRepository{ctx: ctx, db: db}
+	}
+
+	return r, nil
+}
+
+func (p *gormRepository) CreateFacility(ctx context.Context, r *api.DirectDebitFacility) error {
+	tx := p.db.WithContext(ctx).Create(&r)
+	return tx.Error
+}
+
+func (p *gormRepository) GetFacilityByID(ctx context.Context, id string) (*api.DirectDebitFacility, error) {
+	var r api.DirectDebitFacility
+	tx := p.db.WithContext(ctx).First(&r, "id = ?", id)
+	if tx.Error == gorm.ErrRecordNotFound {
+		return nil, recorderrors.ErrNotFound
+	}
+	return &r, tx.Error
+}
+
+func (p *gormRepository) UpdateFacility(ctx context.Context, id string, v *api.DirectDebitFacility) (*api.DirectDebitFacility, error) {
+	tx := p.db.WithContext(ctx).Model(&api.DirectDebitFacility{}).Where("id = ?", id).UpdateColumns(v)
+	if tx.RowsAffected == 0 {
+		return nil, recorderrors.ErrNotFound
+	}
+	v.ID = &id
+	return v, tx.Error
+}
+`,
+	"repository.tmpl": `type Repository interface {
+	GetFacilityByID(ctx context.Context, id string) (*api.DirectDebitFacility, error)
+	CreateFacility(ctx context.Context, f *api.DirectDebitFacility) error
+	UpdateFacility(ctx context.Context, id string, f *api.DirectDebitFacility) (*api.DirectDebitFacility, error)
+}
+`,
 	"request-bodies.tmpl": `{{range .}}{{$opid := .OperationId}}
 {{range .Bodies}}
 {{with .TypeDef $opid}}
@@ -1351,6 +1558,138 @@ type {{.TypeName}} {{if and (opts.AliasTypes) (.CanAlias)}}={{end}} {{.Schema.Ty
 {{end}}
 {{end}}
 {{end}}
+`,
+	"service.tmpl": `type DirectDebitFacilityService interface {
+	GetFacilityByID(context.Context, string) (*api.DirectDebitFacility, error)
+	CreateFacility(context.Context, *api.DirectDebitFacility) (*api.DirectDebitFacility, error)
+	UpdateFacility(context.Context, string, *api.DirectDebitFacility) (*api.DirectDebitFacility, error)
+}
+
+type facilityService struct {
+	repository Repository
+}
+
+func NewService(repository Repository, logger log.Factory) DirectDebitFacilityService {
+	var svc DirectDebitFacilityService
+	{
+		svc = &facilityService{
+			repository: repository,
+		}
+	}
+	return svc
+}
+
+func (f *facilityService) GetFacilityByID(ctx context.Context, id string) (*api.DirectDebitFacility, error) {
+	v, err := f.repository.GetFacilityByID(ctx, id)
+	return v, err
+}
+
+func (f *facilityService) CreateFacility(ctx context.Context, v *api.DirectDebitFacility) (*api.DirectDebitFacility, error) {
+	err := f.repository.CreateFacility(ctx, v)
+	return v, err
+}
+
+func (f *facilityService) UpdateFacility(ctx context.Context, id string, v *api.DirectDebitFacility) (*api.DirectDebitFacility, error) {
+	r, err := f.repository.UpdateFacility(ctx, id, v)
+	return r, err
+}
+`,
+	"transport.tmpl": `func NewHTTPRouter(endpoints EndpointSet, logger log.Factory, tracer opentracing.Tracer) *mux.Router {
+	options := []httptransport.ServerOption{
+		httptransport.ServerErrorEncoder(errorEncoder),
+	}
+
+  r := mux.NewRouter()
+
+  
+
+	getFacilityHandler := httptransport.NewServer(
+		endpoints.GetFacilityEndpoint,
+		decodeGetFacilityRequest,
+		encodeResponse,
+		options...,
+	)
+	r.Handle("/account/direct-debit/", createFacilityHandler).Methods("POST")
+
+	createFacilityHandler := httptransport.NewServer(
+		endpoints.CreateFacilityEndpoint,
+		decodeCreateFacilityRequest,
+		encodeResponse,
+		options...,
+	)
+	r.Handle("/account/direct-debit/{id}/", getFacilityHandler).Methods("GET")
+
+	updateFacilityHandler := httptransport.NewServer(
+		endpoints.UpdateFacilityEndpoint,
+		decodeUpdateFacilityRequest,
+		encodeResponse,
+		options...,
+	)
+	r.Handle("/account/direct-debit/{id}/", updateFacilityHandler).Methods("PATCH")
+
+	return r
+}
+
+// Response Encoder (Generic)
+
+func encodeResponse(_ context.Context, w http.ResponseWriter, response interface{}) error {
+	return json.NewEncoder(w).Encode(response)
+}
+
+// Error Encoder
+
+type errorResponse struct { 
+  // TODO: This should have the json:"error,omitempty" tag but it broke templating with the backticks
+  Error string 
+}
+
+func errorEncoder(ctx context.Context, err error, w http.ResponseWriter) {
+	if err == recorderrors.ErrNotFound {
+		w.WriteHeader(http.StatusNotFound)
+	} else {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(errorResponse{Error: err.Error()})
+	}
+}
+
+// Get Facility
+
+func decodeGetFacilityRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	vars := mux.Vars(r)
+	request := GetFacilityRequest{
+		ID: vars["id"],
+	}
+	return request, nil
+}
+
+// Create Facility
+
+func decodeCreateFacilityRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	var v api.DirectDebitFacility
+	if err := json.NewDecoder(r.Body).Decode(&v); err != nil {
+		return nil, err
+	}
+	request := CreateFacilityRequest{
+		Facility: &v,
+	}
+	return request, nil
+}
+
+// Update Facility
+
+func decodeUpdateFacilityRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	vars := mux.Vars(r)
+	var v api.DirectDebitFacility
+	if err := json.NewDecoder(r.Body).Decode(&v); err != nil {
+		return nil, err
+	}
+	request := UpdateFacilityRequest{
+		ID:       vars["id"],
+		Facility: &v,
+	}
+
+	return request, nil
+}
 `,
 	"typedef.tmpl": `{{range .Types}}
 {{ with .Schema.Description }}{{ . }}{{ else }}// {{.TypeName}} defines model for {{.JsonName}}.{{ end }}

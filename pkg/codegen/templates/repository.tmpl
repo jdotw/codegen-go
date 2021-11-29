@@ -1,0 +1,5 @@
+type Repository interface {
+	GetFacilityByID(ctx context.Context, id string) (*api.DirectDebitFacility, error)
+	CreateFacility(ctx context.Context, f *api.DirectDebitFacility) error
+	UpdateFacility(ctx context.Context, id string, f *api.DirectDebitFacility) (*api.DirectDebitFacility, error)
+}

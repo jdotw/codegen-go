@@ -1,0 +1,96 @@
+func NewHTTPRouter(endpoints EndpointSet, logger log.Factory, tracer opentracing.Tracer) *mux.Router {
+	options := []httptransport.ServerOption{
+		httptransport.ServerErrorEncoder(errorEncoder),
+	}
+
+  r := mux.NewRouter()
+
+  
+
+	getFacilityHandler := httptransport.NewServer(
+		endpoints.GetFacilityEndpoint,
+		decodeGetFacilityRequest,
+		encodeResponse,
+		options...,
+	)
+	r.Handle("/account/direct-debit/", createFacilityHandler).Methods("POST")
+
+	createFacilityHandler := httptransport.NewServer(
+		endpoints.CreateFacilityEndpoint,
+		decodeCreateFacilityRequest,
+		encodeResponse,
+		options...,
+	)
+	r.Handle("/account/direct-debit/{id}/", getFacilityHandler).Methods("GET")
+
+	updateFacilityHandler := httptransport.NewServer(
+		endpoints.UpdateFacilityEndpoint,
+		decodeUpdateFacilityRequest,
+		encodeResponse,
+		options...,
+	)
+	r.Handle("/account/direct-debit/{id}/", updateFacilityHandler).Methods("PATCH")
+
+	return r
+}
+
+// Response Encoder (Generic)
+
+func encodeResponse(_ context.Context, w http.ResponseWriter, response interface{}) error {
+	return json.NewEncoder(w).Encode(response)
+}
+
+// Error Encoder
+
+type errorResponse struct { 
+  // TODO: This should have the json:"error,omitempty" tag but it broke templating with the backticks
+  Error string 
+}
+
+func errorEncoder(ctx context.Context, err error, w http.ResponseWriter) {
+	if err == recorderrors.ErrNotFound {
+		w.WriteHeader(http.StatusNotFound)
+	} else {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(errorResponse{Error: err.Error()})
+	}
+}
+
+// Get Facility
+
+func decodeGetFacilityRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	vars := mux.Vars(r)
+	request := GetFacilityRequest{
+		ID: vars["id"],
+	}
+	return request, nil
+}
+
+// Create Facility
+
+func decodeCreateFacilityRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	var v api.DirectDebitFacility
+	if err := json.NewDecoder(r.Body).Decode(&v); err != nil {
+		return nil, err
+	}
+	request := CreateFacilityRequest{
+		Facility: &v,
+	}
+	return request, nil
+}
+
+// Update Facility
+
+func decodeUpdateFacilityRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	vars := mux.Vars(r)
+	var v api.DirectDebitFacility
+	if err := json.NewDecoder(r.Body).Decode(&v); err != nil {
+		return nil, err
+	}
+	request := UpdateFacilityRequest{
+		ID:       vars["id"],
+		Facility: &v,
+	}
+
+	return request, nil
+}

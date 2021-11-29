@@ -27,6 +27,7 @@ import (
 
 	"github.com/deepmap/oapi-codegen/pkg/codegen"
 	"github.com/deepmap/oapi-codegen/pkg/util"
+	"github.com/iancoleman/strcase"
 )
 
 func errExit(format string, args ...interface{}) {
@@ -62,7 +63,7 @@ type configuration struct {
 func main() {
 
 	flag.StringVar(&flagPackageName, "package", "", "The package name for generated code")
-	flag.StringVar(&flagGenerate, "generate", "types,client,server,spec",
+	flag.StringVar(&flagGenerate, "generate", "types,client",
 		`Comma-separated list of code to generate; valid options: "types", "client", "chi-server", "server", "gin", "spec", "skip-fmt", "skip-prune"`)
 	flag.StringVar(&flagOutputFile, "o", "", "Where to output generated code, stdout is default")
 	flag.StringVar(&flagIncludeTags, "include-tags", "", "Only include operations with the given tags. Comma-separated list of tags.")
@@ -101,56 +102,66 @@ func main() {
 		errExit("error loading swagger spec in %s\n: %s", flag.Arg(0), err)
 	}
 
+	cfg := configFromFlags()
+
+	opts := codegen.Options{
+		AliasTypes: flagAliasTypes,
+	}
+	for _, g := range cfg.GenerateTargets {
+		switch g {
+		case "client":
+			opts.GenerateClient = true
+		case "types":
+			opts.GenerateTypes = true
+		case "service":
+			opts.GenerateService = true
+		case "repository":
+			opts.GenerateRepository = true
+		case "endpoints":
+			opts.GenerateEndpoints = true
+		case "transport":
+			opts.GenerateTransports = true
+		case "project":
+			opts.GenerateProject = true
+		case "bootstrap":
+			opts.GenerateClient = true
+			opts.GenerateEndpoints = true
+			opts.GenerateProject = true
+			opts.GenerateRepository = true
+			opts.GenerateService = true
+			opts.GenerateTransports = true
+			opts.GenerateTypes = true
+		default:
+			fmt.Printf("unknown generate option %s\n", g)
+			flag.PrintDefaults()
+			os.Exit(1)
+		}
+	}
+
+	opts.ExcludeTags = cfg.ExcludeTags
+	opts.ExcludeSchemas = cfg.ExcludeSchemas
+
+	if opts.GenerateEchoServer && opts.GenerateChiServer {
+		errExit("can not specify both server and chi-server targets simultaneously")
+	}
+
+	path := flag.Arg(0)
+	baseName := filepath.Base(path)
+	// Split the base name on '.' to get the first part of the file.
+	nameParts := strings.Split(baseName, ".")
+	projectName := strcase.ToKebab(strings.ToLower(nameParts[0]))
+
 	tags := util.UniquePathTags(swagger)
 	for _, t := range tags {
 		println("TAG: ", t)
 
-		cfg := configFromFlags()
+		// Only include code related to this tag
+		opts.IncludeTags = []string{t}
 
 		// If the package name has not been specified, we will use the name of the
-		// swagger file.
+		// tag as the package name
 		if cfg.PackageName == "" {
-			path := flag.Arg(0)
-			baseName := filepath.Base(path)
-			// Split the base name on '.' to get the first part of the file.
-			nameParts := strings.Split(baseName, ".")
-			cfg.PackageName = codegen.ToCamelCase(nameParts[0])
-		}
-
-		opts := codegen.Options{
-			AliasTypes: flagAliasTypes,
-		}
-		for _, g := range cfg.GenerateTargets {
-			switch g {
-			case "client":
-				opts.GenerateClient = true
-			case "chi-server":
-				opts.GenerateChiServer = true
-			case "server":
-				opts.GenerateEchoServer = true
-			case "gin":
-				opts.GenerateGinServer = true
-			case "types":
-				opts.GenerateTypes = true
-			case "spec":
-				opts.EmbedSpec = true
-			case "skip-fmt":
-				opts.SkipFmt = true
-			case "skip-prune":
-				opts.SkipPrune = true
-			default:
-				fmt.Printf("unknown generate option %s\n", g)
-				flag.PrintDefaults()
-				os.Exit(1)
-			}
-		}
-
-		opts.IncludeTags = append(opts.IncludeTags, t)
-		opts.ExcludeTags = cfg.ExcludeTags
-		opts.ExcludeSchemas = cfg.ExcludeSchemas
-
-		if opts.GenerateEchoServer && opts.GenerateChiServer {
-			errExit("can not specify both server and chi-server targets simultaneously")
+			cfg.PackageName = strings.ToLower(t)
 		}
 
 		// Re-load the swagger file because the codegen.Generate will
@@ -165,41 +176,96 @@ func main() {
 		if err != nil {
 			errExit("error loading template overrides: %s\n", err)
 		}
+
 		opts.UserTemplates = templates
-
 		opts.ImportMapping = cfg.ImportMapping
-
 		opts.IncludeTags = nil
 		opts.IncludeTags = append(opts.IncludeTags, t)
-		code, err := codegen.Generate(swagger, strings.ToLower(t), opts)
+
+		code, err := codegen.Generate(swagger, projectName, strings.ToLower(t), opts)
 		if err != nil {
 			errExit("error generating code: %s\n", err)
 		}
 
-		println("---[ TYPES ]------------------------")
-		fmt.Println(code.Types)
-		println("---[ CLIENT ]------------------------")
-		fmt.Println(code.Client)
+		// println("---[ TYPES ]------------------------")
+		// fmt.Println(code.Types)
+		// println("---[ CLIENT ]------------------------")
+		// fmt.Println(code.Client)
 
 		tagPath := cfg.OutputFile + "/" + strings.ToLower(t)
 		err = os.Mkdir(tagPath, 0755)
 		if err != nil && !os.IsExist(err) {
 			errExit("error creating tag-specific output path: %s", err)
 		}
-		err = ioutil.WriteFile(tagPath+"/types.go", []byte(code.Types), 0644)
-		if err != nil {
-			errExit("error writing generated types code to file: %s", err)
+
+		if opts.GenerateTypes {
+			err = ioutil.WriteFile(tagPath+"/types.go", []byte(code.Types), 0644)
+			if err != nil {
+				errExit("error writing generated types code to file: %s", err)
+			}
 		}
-		err = ioutil.WriteFile(tagPath+"/client.go", []byte(code.Client), 0644)
-		if err != nil {
-			errExit("error writing generated client code to file: %s", err)
+
+		if opts.GenerateClient {
+			err = ioutil.WriteFile(tagPath+"/client.go", []byte(code.Client), 0644)
+			if err != nil {
+				errExit("error writing generated client code to file: %s", err)
+			}
 		}
-		err = ioutil.WriteFile(tagPath+"/main.go", []byte(code.Main), 0644)
+
+		if opts.GenerateService {
+			err = ioutil.WriteFile(tagPath+"/service.go", []byte(code.Service), 0644)
+			if err != nil {
+				errExit("error writing generated service code to file: %s", err)
+			}
+		}
+
+		if opts.GenerateTransports {
+			err = ioutil.WriteFile(tagPath+"/transport.go", []byte(code.Transports), 0644)
+			if err != nil {
+				errExit("error writing generated transport code to file: %s", err)
+			}
+		}
+
+		if opts.GenerateEndpoints {
+			err = ioutil.WriteFile(tagPath+"/endpoint.go", []byte(code.Endpoints), 0644)
+			if err != nil {
+				errExit("error writing generated endpoint code to file: %s", err)
+			}
+		}
+
+		if opts.GenerateRepository {
+			err = ioutil.WriteFile(tagPath+"/repository.go", []byte(code.Repository), 0644)
+			if err != nil {
+				errExit("error writing generated repository code to file: %s", err)
+			}
+			err = ioutil.WriteFile(tagPath+"/repository-gorm.go", []byte(code.RepositoryGORM), 0644)
+			if err != nil {
+				errExit("error writing generated repository GORM code to file: %s", err)
+			}
+		}
+		// println("-------------------------------------")
+	}
+
+	if opts.GenerateProject {
+		main, err := codegen.GenerateMain(flag.Arg(0), tags, opts)
+		if err != nil {
+			errExit("error generating main code: %s\n", err)
+		}
+
+		err = ioutil.WriteFile(cfg.OutputFile+"/main.go", []byte(*main), 0644)
 		if err != nil {
 			errExit("error writing generated main code to file: %s", err)
 		}
 
-		println("-------------------------------------")
+		project, err := codegen.GenerateProject(flag.Arg(0), projectName, opts)
+		if err != nil {
+			errExit("error generating project code: %s\n", err)
+		}
+
+		err = ioutil.WriteFile(cfg.OutputFile+"/go.mod", []byte(*project), 0644)
+		if err != nil {
+			errExit("error writing generated main code to file: %s", err)
+		}
 	}
 }
 

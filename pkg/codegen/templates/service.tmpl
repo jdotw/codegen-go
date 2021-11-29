@@ -1,0 +1,34 @@
+type DirectDebitFacilityService interface {
+	GetFacilityByID(context.Context, string) (*api.DirectDebitFacility, error)
+	CreateFacility(context.Context, *api.DirectDebitFacility) (*api.DirectDebitFacility, error)
+	UpdateFacility(context.Context, string, *api.DirectDebitFacility) (*api.DirectDebitFacility, error)
+}
+
+type facilityService struct {
+	repository Repository
+}
+
+func NewService(repository Repository, logger log.Factory) DirectDebitFacilityService {
+	var svc DirectDebitFacilityService
+	{
+		svc = &facilityService{
+			repository: repository,
+		}
+	}
+	return svc
+}
+
+func (f *facilityService) GetFacilityByID(ctx context.Context, id string) (*api.DirectDebitFacility, error) {
+	v, err := f.repository.GetFacilityByID(ctx, id)
+	return v, err
+}
+
+func (f *facilityService) CreateFacility(ctx context.Context, v *api.DirectDebitFacility) (*api.DirectDebitFacility, error) {
+	err := f.repository.CreateFacility(ctx, v)
+	return v, err
+}
+
+func (f *facilityService) UpdateFacility(ctx context.Context, id string, v *api.DirectDebitFacility) (*api.DirectDebitFacility, error) {
+	r, err := f.repository.UpdateFacility(ctx, id, v)
+	return r, err
+}

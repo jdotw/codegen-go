@@ -659,21 +659,21 @@ func GenerateTypesForOperations(t *template.Template, ops []OperationDefinition)
 
 // GenerateChiServer This function generates all the go code for the ServerInterface as well as
 // all the wrapper functions around our handlers.
-func GenerateChiServer(t *template.Template, operations []OperationDefinition) (string, error) {
-	return GenerateTemplates([]string{"chi-interface.tmpl", "chi-middleware.tmpl", "chi-handler.tmpl"}, t, operations)
-}
+// func GenerateChiServer(t *template.Template, operations []OperationDefinition) (string, error) {
+// 	return GenerateTemplates([]string{"chi-interface.tmpl", "chi-middleware.tmpl", "chi-handler.tmpl"}, t, operations)
+// }
 
-// GenerateEchoServer This function generates all the go code for the ServerInterface as well as
-// all the wrapper functions around our handlers.
-func GenerateEchoServer(t *template.Template, operations []OperationDefinition) (string, error) {
-	return GenerateTemplates([]string{"echo-interface.tmpl", "echo-wrappers.tmpl", "echo-register.tmpl"}, t, operations)
-}
+// // GenerateEchoServer This function generates all the go code for the ServerInterface as well as
+// // all the wrapper functions around our handlers.
+// func GenerateEchoServer(t *template.Template, operations []OperationDefinition) (string, error) {
+// 	return GenerateTemplates([]string{"echo-interface.tmpl", "echo-wrappers.tmpl", "echo-register.tmpl"}, t, operations)
+// }
 
-// GenerateGinServer This function generates all the go code for the ServerInterface as well as
-// all the wrapper functions around our handlers.
-func GenerateGinServer(t *template.Template, operations []OperationDefinition) (string, error) {
-	return GenerateTemplates([]string{"gin-interface.tmpl", "gin-wrappers.tmpl", "gin-register.tmpl"}, t, operations)
-}
+// // GenerateGinServer This function generates all the go code for the ServerInterface as well as
+// // all the wrapper functions around our handlers.
+// func GenerateGinServer(t *template.Template, operations []OperationDefinition) (string, error) {
+// 	return GenerateTemplates([]string{"gin-interface.tmpl", "gin-wrappers.tmpl", "gin-register.tmpl"}, t, operations)
+// }
 
 // Uses the template engine to generate the function which registers our wrappers
 // as Echo path handlers.
@@ -685,6 +685,26 @@ func GenerateClient(t *template.Template, ops []OperationDefinition) (string, er
 // unmarshaling.
 func GenerateClientWithResponses(t *template.Template, ops []OperationDefinition) (string, error) {
 	return GenerateTemplates([]string{"client-with-responses.tmpl"}, t, ops)
+}
+
+func GenerateService(t *template.Template, ops []OperationDefinition) (string, error) {
+	return GenerateTemplates([]string{"service.tmpl"}, t, ops)
+}
+
+func GenerateTransports(t *template.Template, ops []OperationDefinition) (string, error) {
+	return GenerateTemplates([]string{"transport.tmpl"}, t, ops)
+}
+
+func GenerateEndpoints(t *template.Template, ops []OperationDefinition) (string, error) {
+	return GenerateTemplates([]string{"endpoint.tmpl"}, t, ops)
+}
+
+func GenerateRepository(t *template.Template, ops []OperationDefinition) (string, error) {
+	return GenerateTemplates([]string{"repository.tmpl"}, t, ops)
+}
+
+func GenerateRepositoryGORM(t *template.Template, ops []OperationDefinition) (string, error) {
+	return GenerateTemplates([]string{"repository-gorm.tmpl"}, t, ops)
 }
 
 // GenerateTemplates used to generate templates

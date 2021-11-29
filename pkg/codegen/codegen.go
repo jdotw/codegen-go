@@ -17,6 +17,7 @@ package codegen
 import (
 	"bufio"
 	"bytes"
+	"flag"
 	"fmt"
 	"runtime/debug"
 	"sort"
@@ -27,15 +28,22 @@ import (
 	"golang.org/x/tools/imports"
 
 	"github.com/deepmap/oapi-codegen/pkg/codegen/templates"
+	"github.com/deepmap/oapi-codegen/pkg/util"
+	"github.com/iancoleman/strcase"
 )
 
 // Options defines the optional code to generate.
 type Options struct {
-	GenerateChiServer  bool              // GenerateChiServer specifies whether to generate chi server boilerplate
-	GenerateEchoServer bool              // GenerateEchoServer specifies whether to generate echo server boilerplate
-	GenerateGinServer  bool              // GenerateGinServer specifies whether to generate echo server boilerplate
-	GenerateClient     bool              // GenerateClient specifies whether to generate client boilerplate
-	GenerateTypes      bool              // GenerateTypes specifies whether to generate type definitions
+	GenerateChiServer  bool // GenerateChiServer specifies whether to generate chi server boilerplate
+	GenerateEchoServer bool // GenerateEchoServer specifies whether to generate echo server boilerplate
+	GenerateGinServer  bool // GenerateGinServer specifies whether to generate echo server boilerplate
+	GenerateClient     bool // GenerateClient specifies whether to generate client boilerplate
+	GenerateTypes      bool // GenerateTypes specifies whether to generate type definitions
+	GenerateService    bool
+	GenerateTransports bool
+	GenerateEndpoints  bool
+	GenerateRepository bool
+	GenerateProject    bool
 	EmbedSpec          bool              // Whether to embed the swagger spec in the generated code
 	SkipFmt            bool              // Whether to skip go imports on the generated code
 	SkipPrune          bool              // Whether to skip pruning unused components on the generated code
@@ -48,9 +56,13 @@ type Options struct {
 }
 
 type Code struct {
-	Types  string
-	Client string
-	Main   string
+	Types          string
+	Client         string
+	Service        string
+	Transports     string
+	Endpoints      string
+	Repository     string
+	RepositoryGORM string
 }
 
 // goImport represents a go package to be imported in the generated code
@@ -109,7 +121,7 @@ func constructImportMapping(input map[string]string) importMap {
 // Uses the Go templating engine to generate all of our server wrappers from
 // the descriptions we've built up above from the schema objects.
 // opts defines
-func Generate(swagger *openapi3.T, packageName string, opts Options) (*Code, error) {
+func Generate(swagger *openapi3.T, projectName string, packageName string, opts Options) (*Code, error) {
 	importMapping = constructImportMapping(opts.ImportMapping)
 
 	filterOperationsByTag(swagger, opts)
@@ -155,12 +167,6 @@ func Generate(swagger *openapi3.T, packageName string, opts Options) (*Code, err
 		}
 	}
 
-	var mainOut string
-	mainOut, err = GenerateMain(t, ops)
-	if err != nil {
-		return nil, fmt.Errorf("error generating main: %w", err)
-	}
-
 	// var echoServerOut string
 	// if opts.GenerateEchoServer {
 	// 	echoServerOut, err = GenerateEchoServer(t, ops)
@@ -198,6 +204,43 @@ func Generate(swagger *openapi3.T, packageName string, opts Options) (*Code, err
 		clientWithResponsesOut, err = GenerateClientWithResponses(t, ops)
 		if err != nil {
 			return nil, fmt.Errorf("error generating client with responses: %w", err)
+		}
+	}
+
+	var serviceOut string
+	if opts.GenerateTransports {
+		serviceOut, err = GenerateService(t, ops)
+		if err != nil {
+			return nil, fmt.Errorf("error generating service: %w", err)
+		}
+	}
+
+	var transportOut string
+	if opts.GenerateTransports {
+		transportOut, err = GenerateTransports(t, ops)
+		if err != nil {
+			return nil, fmt.Errorf("error generating transport: %w", err)
+		}
+	}
+
+	var endpointsOut string
+	if opts.GenerateEndpoints {
+		endpointsOut, err = GenerateEndpoints(t, ops)
+		if err != nil {
+			return nil, fmt.Errorf("error generating endpoints: %w", err)
+		}
+	}
+
+	var repositoryOut string
+	var repositoryGORMOut string
+	if opts.GenerateRepository {
+		repositoryOut, err = GenerateRepository(t, ops)
+		if err != nil {
+			return nil, fmt.Errorf("error generating repository: %w", err)
+		}
+		repositoryGORMOut, err = GenerateRepositoryGORM(t, ops)
+		if err != nil {
+			return nil, fmt.Errorf("error generating repository for GORM: %w", err)
 		}
 	}
 
@@ -294,15 +337,119 @@ func Generate(swagger *openapi3.T, packageName string, opts Options) (*Code, err
 	// }
 	// return string(outBytes), nil
 
-	types, err := renderString(opts, t, packageName, []string{typeDefinitions, constantDefinitions})
-	client, err := renderString(opts, t, packageName, []string{clientOut, clientWithResponsesOut})
-	main, err := renderString(opts, t, packageName, []string{mainOut})
+	var types string
+	if opts.GenerateTypes {
+		types, err = renderString(opts, t, packageName, []string{typeDefinitions, constantDefinitions})
+	}
+	var client string
+	if opts.GenerateClient {
+		client, err = renderString(opts, t, packageName, []string{clientOut, clientWithResponsesOut})
+	}
+	var service string
+	if opts.GenerateService {
+		service, err = renderString(opts, t, packageName, []string{serviceOut})
+	}
+	var transports string
+	if opts.GenerateTransports {
+		transports, err = renderString(opts, t, packageName, []string{transportOut})
+	}
+	var endpoints string
+	if opts.GenerateEndpoints {
+		endpoints, err = renderString(opts, t, packageName, []string{endpointsOut})
+	}
+	var repository string
+	var repositoryGORM string
+	if opts.GenerateRepository {
+		repository, err = renderString(opts, t, packageName, []string{repositoryOut})
+		repositoryGORM, err = renderString(opts, t, packageName, []string{repositoryGORMOut})
+	}
 	c := Code{
-		Types:  types,
-		Client: client,
-		Main:   main,
+		Types:          types,
+		Client:         client,
+		Transports:     transports,
+		Endpoints:      endpoints,
+		Repository:     repository,
+		RepositoryGORM: repositoryGORM,
+		Service:        service,
 	}
 	return &c, nil
+}
+
+type TagOperations struct {
+	Tag      string
+	TagCamel string
+	Package  string
+	Ops      []OperationDefinition
+}
+
+func GenerateMain(swaggerFile string, tags []string, opts Options) (*string, error) {
+	importMapping = constructImportMapping(opts.ImportMapping)
+
+	// This creates the golang templates text package
+	TemplateFunctions["opts"] = func() Options { return opts }
+	t := template.New("oapi-codegen").Funcs(TemplateFunctions)
+	// This parses all of our own template files into the template object
+	// above
+	t, err := templates.Parse(t)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing oapi-codegen templates: %w", err)
+	}
+
+	var tagOps []TagOperations
+	for _, t := range tags {
+		s, err := util.LoadSwagger(swaggerFile)
+		if err != nil {
+			return nil, fmt.Errorf("error loading swagger spec in %s\n: %s", flag.Arg(0), err)
+		}
+
+		opts.IncludeTags = []string{t}
+		filterOperationsByTag(s, opts)
+		pruneUnusedComponents(s)
+
+		ops, err := OperationDefinitions(s)
+		if err != nil {
+			return nil, fmt.Errorf("error creating operation definitions: %w", err)
+		}
+
+		tagOps = append(tagOps, TagOperations{
+			Tag:      t,
+			TagCamel: strcase.ToLowerCamel(t),
+			Package:  strings.ToLower(t),
+			Ops:      ops,
+		})
+	}
+
+	var mainOut string
+	mainOut, err = GenerateMainDefinitions(t, tagOps)
+	if err != nil {
+		return nil, fmt.Errorf("error generating main: %w", err)
+	}
+
+	println("MAIN OUT: ", mainOut)
+
+	main, err := renderString(opts, t, "main", []string{mainOut})
+
+	println("MAIN RENDER: ", main)
+
+	return &main, nil
+}
+
+func GenerateProject(swaggerFile string, projectName string, opts Options) (*string, error) {
+	// This creates the golang templates text package
+	TemplateFunctions["opts"] = func() Options { return opts }
+	t := template.New("oapi-codegen").Funcs(TemplateFunctions)
+	// This parses all of our own template files into the template object
+	// above
+	t, err := templates.Parse(t)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing oapi-codegen templates: %w", err)
+	}
+
+	mainOut, err := GenerateProjectDefinitions(t, projectName)
+	if err != nil {
+		return nil, fmt.Errorf("error generating main: %w", err)
+	}
+	return &mainOut, nil
 }
 
 func renderString(opts Options, t *template.Template, packageName string, strings []string) (string, error) {
@@ -341,9 +488,12 @@ func renderString(opts Options, t *template.Template, packageName string, string
 		return goCode, nil
 	}
 
+	println("packageName: ", packageName)
+	println("GOCODE: ", goCode)
 	outBytes, err := imports.Process(packageName+".go", []byte(goCode), nil)
 	if err != nil {
-		fmt.Println(goCode)
+		println("ERRR: ", err.Error())
+		// fmt.Println(goCode)
 		return "", fmt.Errorf("error formatting Go code: %w", err)
 	}
 
@@ -351,29 +501,12 @@ func renderString(opts Options, t *template.Template, packageName string, string
 }
 
 // Generates main.go file
-func GenerateMain(t *template.Template, ops []OperationDefinition) (string, error) {
-	constants := Constants{
-		SecuritySchemeProviderNames: []string{},
-	}
+func GenerateMainDefinitions(t *template.Template, tagOps []TagOperations) (string, error) {
+	return GenerateTemplates([]string{"main.tmpl"}, t, tagOps)
+}
 
-	providerNameMap := map[string]struct{}{}
-	for _, op := range ops {
-		for _, def := range op.SecurityDefinitions {
-			providerName := SanitizeGoIdentity(def.ProviderName)
-			providerNameMap[providerName] = struct{}{}
-		}
-	}
-
-	var providerNames []string
-	for providerName := range providerNameMap {
-		providerNames = append(providerNames, providerName)
-	}
-
-	sort.Strings(providerNames)
-
-	constants.SecuritySchemeProviderNames = append(constants.SecuritySchemeProviderNames, providerNames...)
-
-	return GenerateTemplates([]string{"main.tmpl"}, t, constants)
+func GenerateProjectDefinitions(t *template.Template, projectName string) (string, error) {
+	return GenerateTemplates([]string{"go.mod.tmpl"}, t, projectName)
 }
 
 func GenerateTypeDefinitions(t *template.Template, swagger *openapi3.T, ops []OperationDefinition, excludeSchemas []string) (string, error) {
@@ -643,7 +776,6 @@ func GenerateEnums(t *template.Template, types []TypeDefinition) (string, error)
 	}
 
 	return GenerateTemplates([]string{"constants.tmpl"}, t, c)
-
 }
 
 // Generate our import statements and package definition.

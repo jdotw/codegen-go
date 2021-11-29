@@ -1,0 +1,48 @@
+type gormRepository struct {
+	ctx context.Context
+	db  *gorm.DB
+}
+
+func NewGormRepository(ctx context.Context, connString string, tracer opentracing.Tracer, logger log.Factory) (Repository, error) {
+	var r Repository
+	{
+		db, err := gorm.Open(postgres.Open(connString), &gorm.Config{})
+		if err != nil {
+			logger.For(ctx).Fatal("Failed to open db", zap.Error(err))
+		}
+
+		db.Use(gormopentracing.New(gormopentracing.WithTracer(tracer)))
+
+		err = db.AutoMigrate(&api.DirectDebitFacility{})
+		if err != nil {
+			logger.For(ctx).Fatal("Failed to migrate db", zap.Error(err))
+		}
+
+		r = &gormRepository{ctx: ctx, db: db}
+	}
+
+	return r, nil
+}
+
+func (p *gormRepository) CreateFacility(ctx context.Context, r *api.DirectDebitFacility) error {
+	tx := p.db.WithContext(ctx).Create(&r)
+	return tx.Error
+}
+
+func (p *gormRepository) GetFacilityByID(ctx context.Context, id string) (*api.DirectDebitFacility, error) {
+	var r api.DirectDebitFacility
+	tx := p.db.WithContext(ctx).First(&r, "id = ?", id)
+	if tx.Error == gorm.ErrRecordNotFound {
+		return nil, recorderrors.ErrNotFound
+	}
+	return &r, tx.Error
+}
+
+func (p *gormRepository) UpdateFacility(ctx context.Context, id string, v *api.DirectDebitFacility) (*api.DirectDebitFacility, error) {
+	tx := p.db.WithContext(ctx).Model(&api.DirectDebitFacility{}).Where("id = ?", id).UpdateColumns(v)
+	if tx.RowsAffected == 0 {
+		return nil, recorderrors.ErrNotFound
+	}
+	v.ID = &id
+	return v, tx.Error
+}

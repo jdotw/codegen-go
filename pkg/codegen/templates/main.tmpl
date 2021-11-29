@@ -5,26 +5,40 @@ func main() {
 	logger, metricsFactory := log.Init(serviceName)
 	tracer := tracing.Init(serviceName, metricsFactory, logger)
 
-	// Direct Debit Facility Service
-	var facilityHttpHandler http.Handler
-	{
-		repository, err := facility.NewGormRepository(context.Background(), os.Getenv("POSTGRES_DSN"), tracer, logger)
+{{range . -}}
+{{$tag := .Tag}}
+{{$tagVar := .TagCamel}}
+{{$tagPkg := .Package}}
+  // {{$tag}} Service
+  var {{$tagVar}}Router *mux.Router
+  {
+		repo, err := {{$tagPkg}}.NewGormRepository(context.Background(), os.Getenv("POSTGRES_DSN"), tracer, logger)
 		if err != nil {
-			logger.Bg().Fatal("Failed to create facility repository", zap.Error(err))
+			logger.Bg().Fatal("Failed to create {{$tagPkg}} repository", zap.Error(err))
 		}
-		service := facility.NewService(repository, logger)
-		endPoints := facility.NewEndpointSet(service, logger, tracer)
-		facilityHttpHandler = facility.NewHTTPHandler(endPoints, logger, tracer)
-	}
+		service := {{$tagPkg}}.NewService(repository, logger)
+		endPoints := {{$tagPkg}}.NewEndpointSet(service, logger, tracer)
+		{{$tagVar}}Router = {{$tagPkg}}.NewHTTPRouter(endPoints, logger, tracer)
+  } 
+{{end}}{{/* range . */}}
+
+  m := tracing.NewServeMux(tracer)
+	m.Handle("/metrics", promhttp.Handler()) // Prometheus
+{{range . -}}
+{{$tag := .Tag}}
+{{$tagVar := .TagCamel}}
+{{$tagPkg := .Package}}
+	m.Handle("/{{$tagPkg}}/", {{$tagVar}}Router)
+{{end}}{{/* range . */}}
 
 	// Start Transports
 	go func() error {
 		// HTTP
 		httpHost := ""
-		httpPort := 8085
+		httpPort := 8080
 		httpAddr := httpHost + ":" + strconv.Itoa(httpPort)
 		logger.Bg().Info("Listening", zap.String("transport", "http"), zap.String("host", httpHost), zap.Int("port", httpPort), zap.String("addr", httpAddr))
-		err := http.ListenAndServe(httpAddr, facilityHttpHandler)
+		err := http.ListenAndServe(httpAddr, m)
 		logger.Bg().Fatal("Exit", zap.Error(err))
 		return err
 	}()

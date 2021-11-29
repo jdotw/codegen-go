@@ -1,0 +1,78 @@
+type EndpointSet struct {
+	GetFacilityEndpoint    endpoint.Endpoint
+	CreateFacilityEndpoint endpoint.Endpoint
+	UpdateFacilityEndpoint endpoint.Endpoint
+}
+
+func NewEndpointSet(s DirectDebitFacilityService, logger log.Factory, tracer opentracing.Tracer) EndpointSet {
+	var getFacilityEndpoint endpoint.Endpoint
+	{
+		getFacilityEndpoint = makeGetFacilityEndpoint(s)
+		getFacilityEndpoint = tracing.TraceServer(tracer, "GetFacility")(getFacilityEndpoint)
+	}
+	var createFacilityEndpoint endpoint.Endpoint
+	{
+		createFacilityEndpoint = makeCreateFacilityEndpoint(s, logger)
+		createFacilityEndpoint = tracing.TraceServer(tracer, "CreateFacility")(createFacilityEndpoint)
+	}
+	var updateFacilityEndpoint endpoint.Endpoint
+	{
+		updateFacilityEndpoint = makeUpdateFacilityEndpoint(s)
+		updateFacilityEndpoint = tracing.TraceServer(tracer, "UpdateFacility")(updateFacilityEndpoint)
+	}
+	return EndpointSet{
+		GetFacilityEndpoint:    getFacilityEndpoint,
+		CreateFacilityEndpoint: createFacilityEndpoint,
+		UpdateFacilityEndpoint: updateFacilityEndpoint,
+	}
+}
+
+// Create
+
+type CreateFacilityRequest struct {
+	Facility *api.DirectDebitFacility
+}
+
+func makeCreateFacilityEndpoint(s DirectDebitFacilityService, logger log.Factory) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		logger.For(ctx).Info("CreateFacilityEndpoint received request")
+		req := request.(CreateFacilityRequest)
+		v, err := s.CreateFacility(ctx, req.Facility)
+		if err != nil {
+			return &v, err
+		}
+		return &v, nil
+	}
+}
+
+// Get
+
+type GetFacilityRequest struct {
+	ID string
+}
+
+func makeGetFacilityEndpoint(s DirectDebitFacilityService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		req := request.(GetFacilityRequest)
+		v, err := s.GetFacilityByID(ctx, req.ID)
+		if err != nil {
+			return &v, err
+		}
+		return &v, nil
+	}
+}
+
+// Update
+
+type UpdateFacilityRequest struct {
+	ID       string
+	Facility *api.DirectDebitFacility
+}
+
+func makeUpdateFacilityEndpoint(s DirectDebitFacilityService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		req := request.(UpdateFacilityRequest)
+		v, err := s.UpdateFacility(ctx, req.ID, req.Facility)
+		return &v, err
+	}
+}
