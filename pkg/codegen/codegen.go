@@ -29,7 +29,6 @@ import (
 
 	"github.com/deepmap/oapi-codegen/pkg/codegen/templates"
 	"github.com/deepmap/oapi-codegen/pkg/util"
-	"github.com/iancoleman/strcase"
 )
 
 // Options defines the optional code to generate.
@@ -121,7 +120,7 @@ func constructImportMapping(input map[string]string) importMap {
 // Uses the Go templating engine to generate all of our server wrappers from
 // the descriptions we've built up above from the schema objects.
 // opts defines
-func Generate(swagger *openapi3.T, projectName string, packageName string, opts Options) (*Code, error) {
+func Generate(swagger *openapi3.T, projectName string, packageName string, tag string, opts Options) (*Code, error) {
 	importMapping = constructImportMapping(opts.ImportMapping)
 
 	filterOperationsByTag(swagger, opts)
@@ -149,51 +148,27 @@ func Generate(swagger *openapi3.T, projectName string, packageName string, opts 
 		}
 	}
 
-	ops, err := OperationDefinitions(swagger)
+	ops, err := OperationDefinitions(swagger, tag)
 	if err != nil {
 		return nil, fmt.Errorf("error creating operation definitions: %w", err)
 	}
 
 	var typeDefinitions, constantDefinitions string
 	if opts.GenerateTypes {
-		typeDefinitions, err = GenerateTypeDefinitions(t, swagger, ops, opts.ExcludeSchemas)
+		typeDefinitions, err = GenerateTypeDefinitions(t, swagger, ops.Ops, opts.ExcludeSchemas)
 		if err != nil {
 			return nil, fmt.Errorf("error generating type definitions: %w", err)
 		}
 
-		constantDefinitions, err = GenerateConstants(t, ops)
+		constantDefinitions, err = GenerateConstants(t, ops.Ops)
 		if err != nil {
 			return nil, fmt.Errorf("error generating constants: %w", err)
 		}
 	}
 
-	// var echoServerOut string
-	// if opts.GenerateEchoServer {
-	// 	echoServerOut, err = GenerateEchoServer(t, ops)
-	// 	if err != nil {
-	// 		return nil, fmt.Errorf("error generating Go handlers for Paths: %w", err)
-	// 	}
-	// }
-
-	// var chiServerOut string
-	// if opts.GenerateChiServer {
-	// 	chiServerOut, err = GenerateChiServer(t, ops)
-	// 	if err != nil {
-	// 		return nil, fmt.Errorf("error generating Go handlers for Paths: %w", err)
-	// 	}
-	// }
-
-	// var ginServerOut string
-	// if opts.GenerateGinServer {
-	// 	ginServerOut, err = GenerateGinServer(t, ops)
-	// 	if err != nil {
-	// 		return nil, fmt.Errorf("error generating Go handlers for Paths: %w", err)
-	// 	}
-	// }
-
 	var clientOut string
 	if opts.GenerateClient {
-		clientOut, err = GenerateClient(t, ops)
+		clientOut, err = GenerateClient(t, ops.Ops)
 		if err != nil {
 			return nil, fmt.Errorf("error generating client: %w", err)
 		}
@@ -201,7 +176,7 @@ func Generate(swagger *openapi3.T, projectName string, packageName string, opts 
 
 	var clientWithResponsesOut string
 	if opts.GenerateClient {
-		clientWithResponsesOut, err = GenerateClientWithResponses(t, ops)
+		clientWithResponsesOut, err = GenerateClientWithResponses(t, ops.Ops)
 		if err != nil {
 			return nil, fmt.Errorf("error generating client with responses: %w", err)
 		}
@@ -209,7 +184,7 @@ func Generate(swagger *openapi3.T, projectName string, packageName string, opts 
 
 	var serviceOut string
 	if opts.GenerateTransports {
-		serviceOut, err = GenerateService(t, ops)
+		serviceOut, err = GenerateService(t, *ops)
 		if err != nil {
 			return nil, fmt.Errorf("error generating service: %w", err)
 		}
@@ -217,7 +192,7 @@ func Generate(swagger *openapi3.T, projectName string, packageName string, opts 
 
 	var transportOut string
 	if opts.GenerateTransports {
-		transportOut, err = GenerateTransports(t, ops)
+		transportOut, err = GenerateTransports(t, ops.Ops)
 		if err != nil {
 			return nil, fmt.Errorf("error generating transport: %w", err)
 		}
@@ -225,7 +200,7 @@ func Generate(swagger *openapi3.T, projectName string, packageName string, opts 
 
 	var endpointsOut string
 	if opts.GenerateEndpoints {
-		endpointsOut, err = GenerateEndpoints(t, ops)
+		endpointsOut, err = GenerateEndpoints(t, ops.Ops)
 		if err != nil {
 			return nil, fmt.Errorf("error generating endpoints: %w", err)
 		}
@@ -234,108 +209,15 @@ func Generate(swagger *openapi3.T, projectName string, packageName string, opts 
 	var repositoryOut string
 	var repositoryGORMOut string
 	if opts.GenerateRepository {
-		repositoryOut, err = GenerateRepository(t, ops)
+		repositoryOut, err = GenerateRepository(t, ops.Ops)
 		if err != nil {
 			return nil, fmt.Errorf("error generating repository: %w", err)
 		}
-		repositoryGORMOut, err = GenerateRepositoryGORM(t, ops)
+		repositoryGORMOut, err = GenerateRepositoryGORM(t, ops.Ops)
 		if err != nil {
 			return nil, fmt.Errorf("error generating repository for GORM: %w", err)
 		}
 	}
-
-	// var inlinedSpec string
-	// if opts.EmbedSpec {
-	// 	inlinedSpec, err = GenerateInlinedSpec(t, importMapping, swagger)
-	// 	if err != nil {
-	// 		return nil, fmt.Errorf("error generating Go handlers for Paths: %w", err)
-	// 	}
-	// }
-
-	// var buf bytes.Buffer
-	// w := bufio.NewWriter(&buf)
-
-	// externalImports := importMapping.GoImports()
-	// importsOut, err := GenerateImports(t, externalImports, packageName)
-	// if err != nil {
-	// 	return "", fmt.Errorf("error generating imports: %w", err)
-	// }
-
-	// _, err = w.WriteString(importsOut)
-	// if err != nil {
-	// 	return "", fmt.Errorf("error writing imports: %w", err)
-	// }
-
-	// _, err = w.WriteString(constantDefinitions)
-	// if err != nil {
-	// 	return "", fmt.Errorf("error writing constants: %w", err)
-	// }
-
-	// _, err = w.WriteString(typeDefinitions)
-	// if err != nil {
-	// 	return "", fmt.Errorf("error writing type definitions: %w", err)
-
-	// }
-
-	// if opts.GenerateClient {
-	// 	_, err = w.WriteString(clientOut)
-	// 	if err != nil {
-	// 		return "", fmt.Errorf("error writing client: %w", err)
-	// 	}
-	// 	_, err = w.WriteString(clientWithResponsesOut)
-	// 	if err != nil {
-	// 		return "", fmt.Errorf("error writing client: %w", err)
-	// 	}
-	// }
-
-	// if opts.GenerateEchoServer {
-	// 	_, err = w.WriteString(echoServerOut)
-	// 	if err != nil {
-	// 		return "", fmt.Errorf("error writing server path handlers: %w", err)
-	// 	}
-	// }
-
-	// if opts.GenerateChiServer {
-	// 	_, err = w.WriteString(chiServerOut)
-	// 	if err != nil {
-	// 		return "", fmt.Errorf("error writing server path handlers: %w", err)
-	// 	}
-	// }
-
-	// if opts.GenerateGinServer {
-	// 	_, err = w.WriteString(ginServerOut)
-	// 	if err != nil {
-	// 		return "", fmt.Errorf("error writing server path handlers: %w", err)
-	// 	}
-	// }
-
-	// if opts.EmbedSpec {
-	// 	_, err = w.WriteString(inlinedSpec)
-	// 	if err != nil {
-	// 		return "", fmt.Errorf("error writing inlined spec: %w", err)
-	// 	}
-	// }
-
-	// err = w.Flush()
-	// if err != nil {
-	// 	return "", fmt.Errorf("error flushing output buffer: %w", err)
-	// }
-
-	// // remove any byte-order-marks which break Go-Code
-	// goCode := SanitizeCode(buf.String())
-
-	// // The generation code produces unindented horrors. Use the Go Imports
-	// // to make it all pretty.
-	// if opts.SkipFmt {
-	// 	return goCode, nil
-	// }
-
-	// outBytes, err := imports.Process(packageName+".go", []byte(goCode), nil)
-	// if err != nil {
-	// 	fmt.Println(goCode)
-	// 	return "", fmt.Errorf("error formatting Go code: %w", err)
-	// }
-	// return string(outBytes), nil
 
 	var types string
 	if opts.GenerateTypes {
@@ -406,17 +288,12 @@ func GenerateMain(swaggerFile string, tags []string, opts Options) (*string, err
 		filterOperationsByTag(s, opts)
 		pruneUnusedComponents(s)
 
-		ops, err := OperationDefinitions(s)
+		ops, err := OperationDefinitions(s, t)
 		if err != nil {
 			return nil, fmt.Errorf("error creating operation definitions: %w", err)
 		}
 
-		tagOps = append(tagOps, TagOperations{
-			Tag:      t,
-			TagCamel: strcase.ToLowerCamel(t),
-			Package:  strings.ToLower(t),
-			Ops:      ops,
-		})
+		tagOps = append(tagOps, *ops)
 	}
 
 	var mainOut string

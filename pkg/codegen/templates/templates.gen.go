@@ -1559,8 +1559,18 @@ type {{.TypeName}} {{if and (opts.AliasTypes) (.CanAlias)}}={{end}} {{.Schema.Ty
 {{end}}
 {{end}}
 `,
-	"service.tmpl": `type DirectDebitFacilityService interface {
-	GetFacilityByID(context.Context, string) (*api.DirectDebitFacility, error)
+	"service.tmpl": `{{$tag := .Tag}}
+{{$tagVar := .TagCamel}}
+{{$tagPkg := .Package}}
+type {{$tag}}Service interface {
+{{range .Ops}}
+{{$hasParams := .RequiresParamObject -}}
+{{$pathParams := .PathParams -}}
+{{$opid := .OperationId -}}
+{{$tag := .Tag -}}
+	{{$opid}}(context.Context, string) (*api.DirectDebitFacility, error)
+{{end}}{{/* range .Ops */}}
+
 	CreateFacility(context.Context, *api.DirectDebitFacility) (*api.DirectDebitFacility, error)
 	UpdateFacility(context.Context, string, *api.DirectDebitFacility) (*api.DirectDebitFacility, error)
 }

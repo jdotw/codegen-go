@@ -22,6 +22,7 @@ import (
 	"unicode"
 
 	"github.com/getkin/kin-openapi/openapi3"
+	"github.com/iancoleman/strcase"
 )
 
 type ParameterDefinition struct {
@@ -195,6 +196,7 @@ func DescribeSecurityDefinition(securityRequirements openapi3.SecurityRequiremen
 
 // This structure describes an Operation
 type OperationDefinition struct {
+	Tag         string
 	OperationId string // The operation_id description from Swagger, used to generate function names
 
 	PathParams          []ParameterDefinition // Parameters in the path, eg, /path/:param
@@ -374,7 +376,7 @@ func FilterParameterDefinitionByType(params []ParameterDefinition, in string) []
 }
 
 // OperationDefinitions returns all operations for a swagger definition.
-func OperationDefinitions(swagger *openapi3.T) ([]OperationDefinition, error) {
+func OperationDefinitions(swagger *openapi3.T, tag string) (*TagOperations, error) {
 	var operations []OperationDefinition
 
 	for _, requestPath := range SortedPathsKeys(swagger.Paths) {
@@ -432,6 +434,7 @@ func OperationDefinitions(swagger *openapi3.T) ([]OperationDefinition, error) {
 			}
 
 			opDef := OperationDefinition{
+				Tag:          tag,
 				PathParams:   pathParams,
 				HeaderParams: FilterParameterDefinitionByType(allParams, "header"),
 				QueryParams:  FilterParameterDefinitionByType(allParams, "query"),
@@ -470,7 +473,15 @@ func OperationDefinitions(swagger *openapi3.T) ([]OperationDefinition, error) {
 			operations = append(operations, opDef)
 		}
 	}
-	return operations, nil
+
+	tagOp := TagOperations{
+		Tag:      tag,
+		TagCamel: strcase.ToLowerCamel(tag),
+		Package:  strings.ToLower(tag),
+		Ops:      operations,
+	}
+
+	return &tagOp, nil
 }
 
 func generateDefaultOperationID(opName string, requestPath string) (string, error) {
@@ -687,7 +698,7 @@ func GenerateClientWithResponses(t *template.Template, ops []OperationDefinition
 	return GenerateTemplates([]string{"client-with-responses.tmpl"}, t, ops)
 }
 
-func GenerateService(t *template.Template, ops []OperationDefinition) (string, error) {
+func GenerateService(t *template.Template, ops TagOperations) (string, error) {
 	return GenerateTemplates([]string{"service.tmpl"}, t, ops)
 }
 

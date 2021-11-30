@@ -182,7 +182,7 @@ func main() {
 		opts.IncludeTags = nil
 		opts.IncludeTags = append(opts.IncludeTags, t)
 
-		code, err := codegen.Generate(swagger, projectName, strings.ToLower(t), opts)
+		code, err := codegen.Generate(swagger, projectName, t, strings.ToLower(t), opts)
 		if err != nil {
 			errExit("error generating code: %s\n", err)
 		}
