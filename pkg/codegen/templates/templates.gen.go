@@ -1562,47 +1562,38 @@ type {{.TypeName}} {{if and (opts.AliasTypes) (.CanAlias)}}={{end}} {{.Schema.Ty
 	"service.tmpl": `{{$tag := .Tag}}
 {{$tagVar := .TagCamel}}
 {{$tagPkg := .Package}}
-type {{$tag}}Service interface {
+type Service interface {
 {{range .Ops}}
 {{$hasParams := .RequiresParamObject -}}
 {{$pathParams := .PathParams -}}
 {{$opid := .OperationId -}}
-{{$tag := .Tag -}}
-	{{$opid}}(context.Context, string) (*api.DirectDebitFacility, error)
-{{end}}{{/* range .Ops */}}
-
-	CreateFacility(context.Context, *api.DirectDebitFacility) (*api.DirectDebitFacility, error)
-	UpdateFacility(context.Context, string, *api.DirectDebitFacility) (*api.DirectDebitFacility, error)
+{{$tag := .Tag -}}{{$opid}}(ctx context.Context{{range .PathParams -}}, {{$paramName := .ParamName}}{{$paramName}} string{{end}}) (*{{$tag}}, error){{end}}
 }
 
-type facilityService struct {
+type service struct {
 	repository Repository
 }
 
-func NewService(repository Repository, logger log.Factory) DirectDebitFacilityService {
-	var svc DirectDebitFacilityService
+func NewService(repository Repository, logger log.Factory) Service {
+	var svc Service
 	{
-		svc = &facilityService{
+		svc = &service{
 			repository: repository,
 		}
 	}
 	return svc
 }
 
-func (f *facilityService) GetFacilityByID(ctx context.Context, id string) (*api.DirectDebitFacility, error) {
-	v, err := f.repository.GetFacilityByID(ctx, id)
-	return v, err
-}
-
-func (f *facilityService) CreateFacility(ctx context.Context, v *api.DirectDebitFacility) (*api.DirectDebitFacility, error) {
-	err := f.repository.CreateFacility(ctx, v)
-	return v, err
-}
-
-func (f *facilityService) UpdateFacility(ctx context.Context, id string, v *api.DirectDebitFacility) (*api.DirectDebitFacility, error) {
-	r, err := f.repository.UpdateFacility(ctx, id, v)
-	return r, err
-}
+{{range .Ops}}
+{{$hasParams := .RequiresParamObject -}}
+{{$pathParams := .PathParams -}}
+{{$opid := .OperationId -}}
+{{$tag := .Tag -}}
+  func (f *service) {{$opid}}(ctx context.Context{{range .PathParams -}}, {{.ParamName}} string{{end}}{{if .HasBody}}, v *{{$tag}}{{end}}) (*{{$tag}}, error) {
+    v, err := f.repository.{{$opid}}(ctx{{range .PathParams -}}, {{.ParamName}}{{end}}{{if .HasBody}}, v{{end}})
+    return v, err
+  }
+{{end}}
 `,
 	"transport.tmpl": `func NewHTTPRouter(endpoints EndpointSet, logger log.Factory, tracer opentracing.Tracer) *mux.Router {
 	options := []httptransport.ServerOption{

@@ -227,6 +227,7 @@ func Generate(swagger *openapi3.T, projectName string, packageName string, tag s
 	if opts.GenerateClient {
 		client, err = renderString(opts, t, packageName, []string{clientOut, clientWithResponsesOut})
 	}
+	println("SERVICEOUT: ", serviceOut)
 	var service string
 	if opts.GenerateService {
 		service, err = renderString(opts, t, packageName, []string{serviceOut})
@@ -302,11 +303,7 @@ func GenerateMain(swaggerFile string, tags []string, opts Options) (*string, err
 		return nil, fmt.Errorf("error generating main: %w", err)
 	}
 
-	println("MAIN OUT: ", mainOut)
-
 	main, err := renderString(opts, t, "main", []string{mainOut})
-
-	println("MAIN RENDER: ", main)
 
 	return &main, nil
 }
@@ -365,12 +362,9 @@ func renderString(opts Options, t *template.Template, packageName string, string
 		return goCode, nil
 	}
 
-	println("packageName: ", packageName)
-	println("GOCODE: ", goCode)
 	outBytes, err := imports.Process(packageName+".go", []byte(goCode), nil)
 	if err != nil {
 		println("ERRR: ", err.Error())
-		// fmt.Println(goCode)
 		return "", fmt.Errorf("error formatting Go code: %w", err)
 	}
 

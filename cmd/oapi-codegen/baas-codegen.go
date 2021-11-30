@@ -153,8 +153,6 @@ func main() {
 
 	tags := util.UniquePathTags(swagger)
 	for _, t := range tags {
-		println("TAG: ", t)
-
 		// Only include code related to this tag
 		opts.IncludeTags = []string{t}
 
@@ -182,15 +180,10 @@ func main() {
 		opts.IncludeTags = nil
 		opts.IncludeTags = append(opts.IncludeTags, t)
 
-		code, err := codegen.Generate(swagger, projectName, t, strings.ToLower(t), opts)
+		code, err := codegen.Generate(swagger, projectName, strings.ToLower(t), t, opts)
 		if err != nil {
 			errExit("error generating code: %s\n", err)
 		}
-
-		// println("---[ TYPES ]------------------------")
-		// fmt.Println(code.Types)
-		// println("---[ CLIENT ]------------------------")
-		// fmt.Println(code.Client)
 
 		tagPath := cfg.OutputFile + "/" + strings.ToLower(t)
 		err = os.Mkdir(tagPath, 0755)
