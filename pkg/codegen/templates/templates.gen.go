@@ -1595,41 +1595,51 @@ func NewService(repository Repository, logger log.Factory) Service {
   }
 {{end}}
 `,
-	"transport.tmpl": `func NewHTTPRouter(endpoints EndpointSet, logger log.Factory, tracer opentracing.Tracer) *mux.Router {
+	"transport.tmpl": `{{$tag := .Tag}}
+
+func NewHTTPRouter(endpoints EndpointSet, logger log.Factory, tracer opentracing.Tracer) *mux.Router {
 	options := []httptransport.ServerOption{
 		httptransport.ServerErrorEncoder(errorEncoder),
 	}
 
   r := mux.NewRouter()
 
-  
-
-	getFacilityHandler := httptransport.NewServer(
-		endpoints.GetFacilityEndpoint,
-		decodeGetFacilityRequest,
+{{range .Ops}}
+{{$hasParams := .RequiresParamObject -}}
+{{$pathParams := .PathParams -}}
+{{$opid := .OperationId -}}
+	{{ .OperationIdLowerCamel }}Handler := httptransport.NewServer(
+		endpoints.{{$opid}}Endpoint,
+		decode{{$opid}}Request,
 		encodeResponse,
 		options...,
 	)
-	r.Handle("/account/direct-debit/", createFacilityHandler).Methods("POST")
-
-	createFacilityHandler := httptransport.NewServer(
-		endpoints.CreateFacilityEndpoint,
-		decodeCreateFacilityRequest,
-		encodeResponse,
-		options...,
-	)
-	r.Handle("/account/direct-debit/{id}/", getFacilityHandler).Methods("GET")
-
-	updateFacilityHandler := httptransport.NewServer(
-		endpoints.UpdateFacilityEndpoint,
-		decodeUpdateFacilityRequest,
-		encodeResponse,
-		options...,
-	)
-	r.Handle("/account/direct-debit/{id}/", updateFacilityHandler).Methods("PATCH")
+	r.Handle("{{.Path}}", {{$opid}}Handler).Methods("{{.Method}}")
+{{end}}
 
 	return r
 }
+
+{{range .Ops}}
+{{$hasParams := .RequiresParamObject -}}
+{{$pathParams := .PathParams -}}
+{{$opid := .OperationId -}}
+
+// {{$opid}}
+
+func decode{{$opid}}Request(_ context.Context, r *http.Request) (interface{}, error) {
+  {{if .HasBody}}var body {{$opid}}Request
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		return nil, err
+	}{{end}}
+
+	vars := mux.Vars(r)
+	request := {{$opid}}Request{
+    {{genEndpointRequestVars $pathParams}} {{if .HasBody}}{{$tag}}: body,{{end}}
+	}
+	return request, nil
+}
+{{end}}
 
 // Response Encoder (Generic)
 
@@ -1640,8 +1650,8 @@ func encodeResponse(_ context.Context, w http.ResponseWriter, response interface
 // Error Encoder
 
 type errorResponse struct { 
-  // TODO: This should have the json:"error,omitempty" tag but it broke templating with the backticks
-  Error string 
+  // TODO: This should have the  tag but it broke templating with the backticks
+  {{ genErrorStringVar }}
 }
 
 func errorEncoder(ctx context.Context, err error, w http.ResponseWriter) {
@@ -1651,45 +1661,6 @@ func errorEncoder(ctx context.Context, err error, w http.ResponseWriter) {
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(errorResponse{Error: err.Error()})
 	}
-}
-
-// Get Facility
-
-func decodeGetFacilityRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	vars := mux.Vars(r)
-	request := GetFacilityRequest{
-		ID: vars["id"],
-	}
-	return request, nil
-}
-
-// Create Facility
-
-func decodeCreateFacilityRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	var v api.DirectDebitFacility
-	if err := json.NewDecoder(r.Body).Decode(&v); err != nil {
-		return nil, err
-	}
-	request := CreateFacilityRequest{
-		Facility: &v,
-	}
-	return request, nil
-}
-
-// Update Facility
-
-func decodeUpdateFacilityRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	vars := mux.Vars(r)
-	var v api.DirectDebitFacility
-	if err := json.NewDecoder(r.Body).Decode(&v); err != nil {
-		return nil, err
-	}
-	request := UpdateFacilityRequest{
-		ID:       vars["id"],
-		Facility: &v,
-	}
-
-	return request, nil
 }
 `,
 	"typedef.tmpl": `{{range .Types}}

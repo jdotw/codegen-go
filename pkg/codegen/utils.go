@@ -60,6 +60,10 @@ func ToCamelCase(str string) string {
 	separators := "-#@!$&=.+:;_~ (){}[]"
 	s := strings.Trim(str, " ")
 
+	if strings.ToLower(s) == "id" {
+		return "ID"
+	}
+
 	n := ""
 	capNext := true
 	for _, v := range s {

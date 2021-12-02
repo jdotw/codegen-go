@@ -183,7 +183,7 @@ func Generate(swagger *openapi3.T, projectName string, packageName string, tag s
 	}
 
 	var serviceOut string
-	if opts.GenerateTransports {
+	if opts.GenerateService {
 		serviceOut, err = GenerateService(t, *ops)
 		if err != nil {
 			return nil, fmt.Errorf("error generating service: %w", err)
@@ -192,7 +192,7 @@ func Generate(swagger *openapi3.T, projectName string, packageName string, tag s
 
 	var transportOut string
 	if opts.GenerateTransports {
-		transportOut, err = GenerateTransports(t, ops.Ops)
+		transportOut, err = GenerateTransports(t, *ops)
 		if err != nil {
 			return nil, fmt.Errorf("error generating transport: %w", err)
 		}
@@ -227,7 +227,6 @@ func Generate(swagger *openapi3.T, projectName string, packageName string, tag s
 	if opts.GenerateClient {
 		client, err = renderString(opts, t, packageName, []string{clientOut, clientWithResponsesOut})
 	}
-	println("SERVICEOUT: ", serviceOut)
 	var service string
 	if opts.GenerateService {
 		service, err = renderString(opts, t, packageName, []string{serviceOut})
@@ -236,6 +235,7 @@ func Generate(swagger *openapi3.T, projectName string, packageName string, tag s
 	if opts.GenerateTransports {
 		transports, err = renderString(opts, t, packageName, []string{transportOut})
 	}
+	println("TRANSPORT_OUT: ", transportOut)
 	var endpoints string
 	if opts.GenerateEndpoints {
 		endpoints, err = renderString(opts, t, packageName, []string{endpointsOut})

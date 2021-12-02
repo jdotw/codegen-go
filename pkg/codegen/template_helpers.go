@@ -51,6 +51,22 @@ func genParamArgs(params []ParameterDefinition) string {
 	return ", " + strings.Join(parts, ", ")
 }
 
+func genEndpointRequestVars(params []ParameterDefinition) string {
+	if len(params) == 0 {
+		return ""
+	}
+	parts := make([]string, len(params))
+	for i, p := range params {
+		paramName := p.GoVariableName()
+		parts[i] = fmt.Sprintf("%s: vars[\"%s\"],\n", ToCamelCase(paramName), p.ParamName)
+	}
+	return strings.Join(parts, ", ")
+}
+
+func genErrorStringVar() string {
+	return "Error string `json:\"error,omitempty\"`"
+}
+
 // This function is much like the one above, except it only produces the
 // types of the parameters for a type declaration. It would produce this
 // from the same input as above:
@@ -274,6 +290,8 @@ var TemplateFunctions = template.FuncMap{
 	"genParamTypes":              genParamTypes,
 	"genParamNames":              genParamNames,
 	"genParamFmtString":          ReplacePathParamsWithStr,
+	"genEndpointRequestVars":     genEndpointRequestVars,
+	"genErrorStringVar":          genErrorStringVar,
 	"swaggerUriToEchoUri":        SwaggerUriToEchoUri,
 	"swaggerUriToChiUri":         SwaggerUriToChiUri,
 	"swaggerUriToGinUri":         SwaggerUriToGinUri,
