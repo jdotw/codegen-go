@@ -1482,7 +1482,7 @@ type {{.TypeName}} {{if and (opts.AliasTypes) (.CanAlias)}}={{end}} {{.Schema.Ty
 {{end}}
 {{end}}
 `,
-	"repository-gorm.tmpl": `type gormRepository struct {
+	"repository-gorm.tmpl": `type repository struct {
 	ctx context.Context
 	db  *gorm.DB
 }
@@ -1502,34 +1502,44 @@ func NewGormRepository(ctx context.Context, connString string, tracer opentracin
 			logger.For(ctx).Fatal("Failed to migrate db", zap.Error(err))
 		}
 
-		r = &gormRepository{ctx: ctx, db: db}
+		r = &repository{ctx: ctx, db: db}
 	}
 
 	return r, nil
 }
 
-func (p *gormRepository) CreateFacility(ctx context.Context, r *api.DirectDebitFacility) error {
-	tx := p.db.WithContext(ctx).Create(&r)
-	return tx.Error
-}
 
-func (p *gormRepository) GetFacilityByID(ctx context.Context, id string) (*api.DirectDebitFacility, error) {
-	var r api.DirectDebitFacility
-	tx := p.db.WithContext(ctx).First(&r, "id = ?", id)
-	if tx.Error == gorm.ErrRecordNotFound {
-		return nil, recorderrors.ErrNotFound
-	}
-	return &r, tx.Error
-}
+{{range .Ops}}
+{{$hasParams := .RequiresParamObject -}}
+{{$pathParams := .PathParams -}}
+{{$opid := .OperationId -}}
+{{$tag := .Tag -}}
+  func (p *repository) {{$opid}}(ctx context.Context{{range .PathParams -}}, {{.ParamName}} string{{end}}{{if .HasBody}}, v *{{$tag}}{{end}}) (*{{$tag}}, error) {
+    {{if isCreate .}}tx := p.db.WithContext(ctx).Create(&v)
+	  return tx.Error
+    {{end}}
+    {{if isGet .}}
+	  var v {{$tag}}
+	  tx := p.db.WithContext(ctx).First(&v, "id = ?", id)
+	  if tx.Error == gorm.ErrRecordNotFound {
+		  return nil, recorderrors.ErrNotFound
+  	}
+  	return &v, tx.Error
+    {{end}}
+    {{if isUpdate .}}
+  	tx := p.db.WithContext(ctx).Model(&{{$tag}}{}).Where("id = ?", id).UpdateColumns(v)
+	  if tx.RowsAffected == 0 {
+		  return nil, recorderrors.ErrNotFound
+	  }
+	  v.ID = &id
+  	return v, tx.Error
+    {{end}}
+    {{if isOther .}}
+    // TODO: Unable to generate code for this Operation
+    {{end}}
+  }
+{{end}}
 
-func (p *gormRepository) UpdateFacility(ctx context.Context, id string, v *api.DirectDebitFacility) (*api.DirectDebitFacility, error) {
-	tx := p.db.WithContext(ctx).Model(&api.DirectDebitFacility{}).Where("id = ?", id).UpdateColumns(v)
-	if tx.RowsAffected == 0 {
-		return nil, recorderrors.ErrNotFound
-	}
-	v.ID = &id
-	return v, tx.Error
-}
 `,
 	"repository.tmpl": `
 {{$tag := .Tag}}

@@ -213,7 +213,7 @@ func Generate(swagger *openapi3.T, projectName string, packageName string, tag s
 		if err != nil {
 			return nil, fmt.Errorf("error generating repository: %w", err)
 		}
-		repositoryGORMOut, err = GenerateRepositoryGORM(t, ops.Ops)
+		repositoryGORMOut, err = GenerateRepositoryGORM(t, *ops)
 		if err != nil {
 			return nil, fmt.Errorf("error generating repository for GORM: %w", err)
 		}

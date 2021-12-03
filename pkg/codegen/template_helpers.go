@@ -283,6 +283,38 @@ func stripNewLines(s string) string {
 	return r.Replace(s)
 }
 
+func isCreate(op *OperationDefinition) bool {
+	if op.OperationId == "Create" {
+		return true
+	} else {
+		return false
+	}
+}
+
+func isUpdate(op *OperationDefinition) bool {
+	if op.OperationId == "Update" {
+		return true
+	} else {
+		return false
+	}
+}
+
+func isGet(op *OperationDefinition) bool {
+	if op.OperationId == "Get" {
+		return true
+	} else {
+		return false
+	}
+}
+
+func isOther(op *OperationDefinition) bool {
+	if !isCreate(op) && !isGet(op) && !isUpdate(op) {
+		return true
+	} else {
+		return false
+	}
+}
+
 // This function map is passed to the template engine, and we can call each
 // function here by keyName from the template code.
 var TemplateFunctions = template.FuncMap{
@@ -307,4 +339,8 @@ var TemplateFunctions = template.FuncMap{
 	"title":                      strings.Title,
 	"stripNewLines":              stripNewLines,
 	"sanitizeGoIdentity":         SanitizeGoIdentity,
+	"isCreate":                   isCreate,
+	"isUpdate":                   isUpdate,
+	"isGet":                      isGet,
+	"isOther":                    isOther,
 }

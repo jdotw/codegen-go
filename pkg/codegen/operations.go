@@ -716,7 +716,7 @@ func GenerateRepository(t *template.Template, ops TagOperations) (string, error)
 	return GenerateTemplates([]string{"repository.tmpl"}, t, ops)
 }
 
-func GenerateRepositoryGORM(t *template.Template, ops []OperationDefinition) (string, error) {
+func GenerateRepositoryGORM(t *template.Template, ops TagOperations) (string, error) {
 	return GenerateTemplates([]string{"repository-gorm.tmpl"}, t, ops)
 }
 
