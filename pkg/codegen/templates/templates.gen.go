@@ -974,31 +974,18 @@ func (w *ServerInterfaceWrapper) {{.OperationId}} (ctx echo.Context) error {
 {{end}}
 `,
 	"endpoint.tmpl": `type EndpointSet struct {
-	GetFacilityEndpoint    endpoint.Endpoint
-	CreateFacilityEndpoint endpoint.Endpoint
-	UpdateFacilityEndpoint endpoint.Endpoint
+{{range .Ops}}
+  {{.OperationId}}Endpoint    endpoint.Endpoint{{end}}
 }
 
-func NewEndpointSet(s DirectDebitFacilityService, logger log.Factory, tracer opentracing.Tracer) EndpointSet {
-	var getFacilityEndpoint endpoint.Endpoint
+func NewEndpointSet(s Service, logger log.Factory, tracer opentracing.Tracer) EndpointSet { {{range .Ops}} 
+  var {{lcFirst .OperationId}}Endpoint endpoint.Endpoint
 	{
-		getFacilityEndpoint = makeGetFacilityEndpoint(s)
-		getFacilityEndpoint = tracing.TraceServer(tracer, "GetFacility")(getFacilityEndpoint)
-	}
-	var createFacilityEndpoint endpoint.Endpoint
-	{
-		createFacilityEndpoint = makeCreateFacilityEndpoint(s, logger)
-		createFacilityEndpoint = tracing.TraceServer(tracer, "CreateFacility")(createFacilityEndpoint)
-	}
-	var updateFacilityEndpoint endpoint.Endpoint
-	{
-		updateFacilityEndpoint = makeUpdateFacilityEndpoint(s)
-		updateFacilityEndpoint = tracing.TraceServer(tracer, "UpdateFacility")(updateFacilityEndpoint)
-	}
-	return EndpointSet{
-		GetFacilityEndpoint:    getFacilityEndpoint,
-		CreateFacilityEndpoint: createFacilityEndpoint,
-		UpdateFacilityEndpoint: updateFacilityEndpoint,
+		{{lcFirst .OperationId}}Endpoint = make{{.OperationId}}Endpoint(s)
+		{{lcFirst .OperationId}}Endpoint = tracing.TraceServer(tracer, "{{.OperationId}}")({{lcFirst .OperationId}}Endpoint)
+	}{{end}}
+	return EndpointSet{ {{range .Ops}}
+		{{.OperationId}}Endpoint: {{lcFirst .OperationId}}Endpoint,{{end}}
 	}
 }
 
@@ -1544,10 +1531,12 @@ func (p *gormRepository) UpdateFacility(ctx context.Context, id string, v *api.D
 	return v, tx.Error
 }
 `,
-	"repository.tmpl": `type Repository interface {
-	GetFacilityByID(ctx context.Context, id string) (*api.DirectDebitFacility, error)
-	CreateFacility(ctx context.Context, f *api.DirectDebitFacility) error
-	UpdateFacility(ctx context.Context, id string, f *api.DirectDebitFacility) (*api.DirectDebitFacility, error)
+	"repository.tmpl": `
+{{$tag := .Tag}}
+type Repository interface {
+{{range .Ops}}
+{{$opid := .OperationId -}}
+{{$tag := .Tag -}}{{$opid}}(ctx context.Context{{range .PathParams -}}, {{$paramName := .ParamName}}{{$paramName}} string{{end}}{{if .HasBody}}, v *{{$tag}}{{end}}) (*{{$tag}}, error){{end}}
 }
 `,
 	"request-bodies.tmpl": `{{range .}}{{$opid := .OperationId}}
@@ -1650,7 +1639,6 @@ func encodeResponse(_ context.Context, w http.ResponseWriter, response interface
 // Error Encoder
 
 type errorResponse struct { 
-  // TODO: This should have the  tag but it broke templating with the backticks
   {{ genErrorStringVar }}
 }
 

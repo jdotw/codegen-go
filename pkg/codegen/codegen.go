@@ -200,7 +200,7 @@ func Generate(swagger *openapi3.T, projectName string, packageName string, tag s
 
 	var endpointsOut string
 	if opts.GenerateEndpoints {
-		endpointsOut, err = GenerateEndpoints(t, ops.Ops)
+		endpointsOut, err = GenerateEndpoints(t, *ops)
 		if err != nil {
 			return nil, fmt.Errorf("error generating endpoints: %w", err)
 		}
@@ -209,7 +209,7 @@ func Generate(swagger *openapi3.T, projectName string, packageName string, tag s
 	var repositoryOut string
 	var repositoryGORMOut string
 	if opts.GenerateRepository {
-		repositoryOut, err = GenerateRepository(t, ops.Ops)
+		repositoryOut, err = GenerateRepository(t, *ops)
 		if err != nil {
 			return nil, fmt.Errorf("error generating repository: %w", err)
 		}

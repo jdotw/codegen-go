@@ -1,29 +1,16 @@
 type EndpointSet struct {
-	GetFacilityEndpoint    endpoint.Endpoint
-	CreateFacilityEndpoint endpoint.Endpoint
-	UpdateFacilityEndpoint endpoint.Endpoint
+{{range .Ops}}
+  {{.OperationId}}Endpoint    endpoint.Endpoint{{end}}
 }
 
-func NewEndpointSet(s DirectDebitFacilityService, logger log.Factory, tracer opentracing.Tracer) EndpointSet {
-	var getFacilityEndpoint endpoint.Endpoint
+func NewEndpointSet(s Service, logger log.Factory, tracer opentracing.Tracer) EndpointSet { {{range .Ops}} 
+  var {{lcFirst .OperationId}}Endpoint endpoint.Endpoint
 	{
-		getFacilityEndpoint = makeGetFacilityEndpoint(s)
-		getFacilityEndpoint = tracing.TraceServer(tracer, "GetFacility")(getFacilityEndpoint)
-	}
-	var createFacilityEndpoint endpoint.Endpoint
-	{
-		createFacilityEndpoint = makeCreateFacilityEndpoint(s, logger)
-		createFacilityEndpoint = tracing.TraceServer(tracer, "CreateFacility")(createFacilityEndpoint)
-	}
-	var updateFacilityEndpoint endpoint.Endpoint
-	{
-		updateFacilityEndpoint = makeUpdateFacilityEndpoint(s)
-		updateFacilityEndpoint = tracing.TraceServer(tracer, "UpdateFacility")(updateFacilityEndpoint)
-	}
-	return EndpointSet{
-		GetFacilityEndpoint:    getFacilityEndpoint,
-		CreateFacilityEndpoint: createFacilityEndpoint,
-		UpdateFacilityEndpoint: updateFacilityEndpoint,
+		{{lcFirst .OperationId}}Endpoint = make{{.OperationId}}Endpoint(s)
+		{{lcFirst .OperationId}}Endpoint = tracing.TraceServer(tracer, "{{.OperationId}}")({{lcFirst .OperationId}}Endpoint)
+	}{{end}}
+	return EndpointSet{ {{range .Ops}}
+		{{.OperationId}}Endpoint: {{lcFirst .OperationId}}Endpoint,{{end}}
 	}
 }
 

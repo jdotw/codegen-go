@@ -708,11 +708,11 @@ func GenerateTransports(t *template.Template, ops TagOperations) (string, error)
 	return GenerateTemplates([]string{"transport.tmpl"}, t, ops)
 }
 
-func GenerateEndpoints(t *template.Template, ops []OperationDefinition) (string, error) {
+func GenerateEndpoints(t *template.Template, ops TagOperations) (string, error) {
 	return GenerateTemplates([]string{"endpoint.tmpl"}, t, ops)
 }
 
-func GenerateRepository(t *template.Template, ops []OperationDefinition) (string, error) {
+func GenerateRepository(t *template.Template, ops TagOperations) (string, error) {
 	return GenerateTemplates([]string{"repository.tmpl"}, t, ops)
 }
 
