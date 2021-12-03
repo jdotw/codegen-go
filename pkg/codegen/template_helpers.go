@@ -63,6 +63,18 @@ func genEndpointRequestVars(params []ParameterDefinition) string {
 	return strings.Join(parts, ", ")
 }
 
+func genEndpointRequestDefs(params []ParameterDefinition) string {
+	if len(params) == 0 {
+		return ""
+	}
+	parts := make([]string, len(params))
+	for i, p := range params {
+		paramName := p.GoVariableName()
+		parts[i] = fmt.Sprintf("%s string,\n", ToCamelCase(paramName))
+	}
+	return strings.Join(parts, ", ")
+}
+
 func genErrorStringVar() string {
 	return "Error string `json:\"error,omitempty\"`"
 }
@@ -323,6 +335,7 @@ var TemplateFunctions = template.FuncMap{
 	"genParamNames":              genParamNames,
 	"genParamFmtString":          ReplacePathParamsWithStr,
 	"genEndpointRequestVars":     genEndpointRequestVars,
+	"genEndpointRequestDefs":     genEndpointRequestDefs,
 	"genErrorStringVar":          genErrorStringVar,
 	"swaggerUriToEchoUri":        SwaggerUriToEchoUri,
 	"swaggerUriToChiUri":         SwaggerUriToChiUri,

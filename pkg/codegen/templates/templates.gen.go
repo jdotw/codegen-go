@@ -989,6 +989,35 @@ func NewEndpointSet(s Service, logger log.Factory, tracer opentracing.Tracer) En
 	}
 }
 
+{{range .Ops}}
+{{$opid := .OperationId -}}
+{{$hasParams := .RequiresParamObject -}}
+{{$pathParams := .PathParams -}}
+{{$tag := .Tag -}}
+// {{$opid}} 
+
+type {{$opid}}Request struct {
+  {{range .PathParams -}}
+  {{camelCase .ParamName}} string
+  {{end}}
+  {{if .HasBody}}{{$tag}} *{{$tag}}{{end}}
+}
+
+func make{{$opid}}Endpoint(s Service, logger log.Factory) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		logger.For(ctx).Info("{{$tag}}.{{$opid}}Endpoint received request")
+		req := request.({{$opid}}Request)
+		v, err := s.{{$opid}}(ctx, {{range .PathParams -}}req.{{camelCase .ParamName}}, {{end}}{{if .HasBody}}req.{{$tag}}{{end}})
+		if err != nil {
+			return &v, err
+		}
+		return &v, nil
+	}
+}
+
+{{end}}
+
+
 // Create
 
 type CreateFacilityRequest struct {
