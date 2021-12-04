@@ -1428,7 +1428,7 @@ func GetSwagger() (swagger *openapi3.T, err error) {
 		if err != nil {
 			logger.Bg().Fatal("Failed to create {{$tagPkg}} repository", zap.Error(err))
 		}
-		service := {{$tagPkg}}.NewService(repository, logger)
+		service := {{$tagPkg}}.NewService(repo, logger)
 		endPoints := {{$tagPkg}}.NewEndpointSet(service, logger, tracer)
 		{{$tagVar}}Router = {{$tagPkg}}.NewHTTPRouter(endPoints, logger, tracer)
   } 
