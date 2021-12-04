@@ -5,12 +5,14 @@ func main() {
 	logger, metricsFactory := log.Init(serviceName)
 	tracer := tracing.Init(serviceName, metricsFactory, logger)
 
+  // HTTP Router
+  r := mux.NewRouter()
+
 {{range .TagOps -}}
 {{$tag := .Tag}}
 {{$tagVar := .TagCamel}}
 {{$tagPkg := .Package}}
   // {{$tag}} Service
-  var {{$tagVar}}Router *mux.Router
   {
 		repo, err := {{$tagPkg}}.NewGormRepository(context.Background(), os.Getenv("POSTGRES_DSN"), tracer, logger)
 		if err != nil {
@@ -18,18 +20,15 @@ func main() {
 		}
 		service := {{$tagPkg}}.NewService(repo, logger)
 		endPoints := {{$tagPkg}}.NewEndpointSet(service, logger, tracer)
-		{{$tagVar}}Router = {{$tagPkg}}.NewHTTPRouter(endPoints, logger, tracer)
+		{{$tagPkg}}.AddHTTPRoutes(r, endPoints, logger, tracer)
   } 
 {{end}}{{/* range . */}}
 
+  // HTTP Mux
   m := tracing.NewServeMux(tracer)
 	m.Handle("/metrics", promhttp.Handler()) // Prometheus
-{{range .TagOps -}}
-{{$tag := .Tag}}
-{{$tagVar := .TagCamel}}
-{{$tagPkg := .Package}}
-	m.Handle("/{{kebabCase $tag}}/", {{$tagVar}}Router)
-{{end}}{{/* range . */}}
+	m.Handle("/", r)
+
 
 	// Start Transports
 	go func() error {

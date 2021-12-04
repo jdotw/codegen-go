@@ -1,11 +1,9 @@
 {{$tag := .Tag}}
 
-func NewHTTPRouter(endpoints EndpointSet, logger log.Factory, tracer opentracing.Tracer) *mux.Router {
+func AddHTTPRoutes(r *mux.Router, endpoints EndpointSet, logger log.Factory, tracer opentracing.Tracer) {
 	options := []httptransport.ServerOption{
 		httptransport.ServerErrorEncoder(errorEncoder),
 	}
-
-  r := mux.NewRouter()
 
 {{range .Ops}}
 {{$hasParams := .RequiresParamObject -}}
@@ -19,8 +17,6 @@ func NewHTTPRouter(endpoints EndpointSet, logger log.Factory, tracer opentracing
 	)
 	r.Handle("{{.Path}}", {{lcFirst $opid}}Handler).Methods("{{.Method}}")
 {{end}}
-
-	return r
 }
 
 {{range .Ops}}

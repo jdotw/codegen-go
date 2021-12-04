@@ -722,12 +722,14 @@ func GetSwagger() (swagger *openapi3.T, err error) {
 	logger, metricsFactory := log.Init(serviceName)
 	tracer := tracing.Init(serviceName, metricsFactory, logger)
 
+  // HTTP Router
+  r := mux.NewRouter()
+
 {{range .TagOps -}}
 {{$tag := .Tag}}
 {{$tagVar := .TagCamel}}
 {{$tagPkg := .Package}}
   // {{$tag}} Service
-  var {{$tagVar}}Router *mux.Router
   {
 		repo, err := {{$tagPkg}}.NewGormRepository(context.Background(), os.Getenv("POSTGRES_DSN"), tracer, logger)
 		if err != nil {
@@ -735,18 +737,15 @@ func GetSwagger() (swagger *openapi3.T, err error) {
 		}
 		service := {{$tagPkg}}.NewService(repo, logger)
 		endPoints := {{$tagPkg}}.NewEndpointSet(service, logger, tracer)
-		{{$tagVar}}Router = {{$tagPkg}}.NewHTTPRouter(endPoints, logger, tracer)
+		{{$tagPkg}}.AddHTTPRoutes(r, endPoints, logger, tracer)
   } 
 {{end}}{{/* range . */}}
 
+  // HTTP Mux
   m := tracing.NewServeMux(tracer)
 	m.Handle("/metrics", promhttp.Handler()) // Prometheus
-{{range .TagOps -}}
-{{$tag := .Tag}}
-{{$tagVar := .TagCamel}}
-{{$tagPkg := .Package}}
-	m.Handle("/{{kebabCase $tag}}/", {{$tagVar}}Router)
-{{end}}{{/* range . */}}
+	m.Handle("/", r)
+
 
 	// Start Transports
 	go func() error {
@@ -906,12 +905,10 @@ func NewService(repository Repository, logger log.Factory) Service {
 `,
 	"transport.tmpl": `{{$tag := .Tag}}
 
-func NewHTTPRouter(endpoints EndpointSet, logger log.Factory, tracer opentracing.Tracer) *mux.Router {
+func AddHTTPRoutes(r *mux.Router, endpoints EndpointSet, logger log.Factory, tracer opentracing.Tracer) {
 	options := []httptransport.ServerOption{
 		httptransport.ServerErrorEncoder(errorEncoder),
 	}
-
-  r := mux.NewRouter()
 
 {{range .Ops}}
 {{$hasParams := .RequiresParamObject -}}
@@ -925,8 +922,6 @@ func NewHTTPRouter(endpoints EndpointSet, logger log.Factory, tracer opentracing
 	)
 	r.Handle("{{.Path}}", {{lcFirst $opid}}Handler).Methods("{{.Method}}")
 {{end}}
-
-	return r
 }
 
 {{range .Ops}}
