@@ -4,7 +4,7 @@ import (
 	"crypto/ecdsa"
 	"fmt"
 
-	"github.com/deepmap/oapi-codegen/pkg/ecdsafile"
+	"github.com/12kmps/codegen-go/pkg/ecdsafile"
 	"github.com/lestrrat-go/jwx/jwa"
 	"github.com/lestrrat-go/jwx/jwk"
 	"github.com/lestrrat-go/jwx/jws"

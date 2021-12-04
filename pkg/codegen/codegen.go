@@ -27,8 +27,8 @@ import (
 	"github.com/getkin/kin-openapi/openapi3"
 	"golang.org/x/tools/imports"
 
-	"github.com/deepmap/oapi-codegen/pkg/codegen/templates"
-	"github.com/deepmap/oapi-codegen/pkg/util"
+	"github.com/12kmps/codegen-go/pkg/codegen/templates"
+	"github.com/12kmps/codegen-go/pkg/util"
 )
 
 // Options defines the optional code to generate.
@@ -229,29 +229,29 @@ func Generate(swaggerFile string, projectName string, packageName string, tag st
 
 	var types string
 	if opts.GenerateTypes {
-		types, err = renderString(opts, t, packageName, []string{typeDefinitions, constantDefinitions})
+		types, err = renderString(opts, t, packageName, []string{typeDefinitions, constantDefinitions}, false)
 	}
 	var client string
 	if opts.GenerateClient {
-		client, err = renderString(opts, t, packageName, []string{clientOut, clientWithResponsesOut})
+		client, err = renderString(opts, t, packageName, []string{clientOut, clientWithResponsesOut}, false)
 	}
 	var service string
 	if opts.GenerateService {
-		service, err = renderString(opts, t, packageName, []string{serviceOut})
+		service, err = renderString(opts, t, packageName, []string{serviceOut}, true)
 	}
 	var transports string
 	if opts.GenerateTransports {
-		transports, err = renderString(opts, t, packageName, []string{transportOut})
+		transports, err = renderString(opts, t, packageName, []string{transportOut}, true)
 	}
 	var endpoints string
 	if opts.GenerateEndpoints {
-		endpoints, err = renderString(opts, t, packageName, []string{endpointsOut})
+		endpoints, err = renderString(opts, t, packageName, []string{endpointsOut}, true)
 	}
 	var repository string
 	var repositoryGORM string
 	if opts.GenerateRepository {
-		repository, err = renderString(opts, t, packageName, []string{repositoryOut})
-		repositoryGORM, err = renderString(opts, t, packageName, []string{repositoryGORMOut})
+		repository, err = renderString(opts, t, packageName, []string{repositoryOut}, true)
+		repositoryGORM, err = renderString(opts, t, packageName, []string{repositoryGORMOut}, true)
 	}
 	c := Code{
 		Types:          types,
@@ -311,7 +311,7 @@ func GenerateMain(swaggerFile string, projectName string, tags []string, opts Op
 		return nil, fmt.Errorf("error generating main: %w", err)
 	}
 
-	main, err := renderString(opts, t, "main", []string{mainOut})
+	main, err := renderString(opts, t, "main", []string{mainOut}, true)
 
 	return &main, nil
 }
@@ -334,12 +334,12 @@ func GenerateProject(swaggerFile string, projectName string, opts Options) (*str
 	return &mainOut, nil
 }
 
-func renderString(opts Options, t *template.Template, packageName string, strings []string) (string, error) {
+func renderString(opts Options, t *template.Template, packageName string, strings []string, mutableFile bool) (string, error) {
 	var buf bytes.Buffer
 	w := bufio.NewWriter(&buf)
 
 	externalImports := importMapping.GoImports()
-	importsOut, err := GenerateImports(t, externalImports, packageName)
+	importsOut, err := GenerateImports(t, externalImports, packageName, mutableFile)
 	if err != nil {
 		return "", fmt.Errorf("error generating imports: %w", err)
 	}
@@ -657,7 +657,7 @@ func GenerateEnums(t *template.Template, types []TypeDefinition) (string, error)
 }
 
 // Generate our import statements and package definition.
-func GenerateImports(t *template.Template, externalImports []string, packageName string) (string, error) {
+func GenerateImports(t *template.Template, externalImports []string, packageName string, mutableFile bool) (string, error) {
 	// Read build version for incorporating into generated files
 	var modulePath string
 	var moduleVersion string
@@ -676,11 +676,13 @@ func GenerateImports(t *template.Template, externalImports []string, packageName
 		PackageName     string
 		ModuleName      string
 		Version         string
+		MutableFile     bool
 	}{
 		ExternalImports: externalImports,
 		PackageName:     packageName,
 		ModuleName:      modulePath,
 		Version:         moduleVersion,
+		MutableFile:     mutableFile,
 	}
 
 	return GenerateTemplates([]string{"imports.tmpl"}, t, context)

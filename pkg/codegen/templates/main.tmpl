@@ -28,7 +28,7 @@ func main() {
 {{$tag := .Tag}}
 {{$tagVar := .TagCamel}}
 {{$tagPkg := .Package}}
-	m.Handle("/{{$tagPkg}}/", {{$tagVar}}Router)
+	m.Handle("/{{kebabCase $tag}}/", {{$tagVar}}Router)
 {{end}}{{/* range . */}}
 
 	// Start Transports

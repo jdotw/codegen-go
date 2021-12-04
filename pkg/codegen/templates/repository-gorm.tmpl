@@ -68,6 +68,7 @@ func NewGormRepository(ctx context.Context, connString string, tracer opentracin
     {{end}}
     {{if isOther .}}
     // TODO: Unable to generate code for this Operation
+    return nil, errors.New("Not Implemented")
     {{end}}
   }
 {{end}}

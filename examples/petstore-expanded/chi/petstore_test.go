@@ -11,9 +11,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/deepmap/oapi-codegen/examples/petstore-expanded/chi/api"
-	middleware "github.com/deepmap/oapi-codegen/pkg/chi-middleware"
-	"github.com/deepmap/oapi-codegen/pkg/testutil"
+	"github.com/12kmps/codegen-go/examples/petstore-expanded/chi/api"
+	middleware "github.com/12kmps/codegen-go/pkg/chi-middleware"
+	"github.com/12kmps/codegen-go/pkg/testutil"
 )
 
 func doGet(t *testing.T, mux *chi.Mux, url string) *httptest.ResponseRecorder {

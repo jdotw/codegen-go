@@ -20,6 +20,7 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/iancoleman/strcase"
 	"github.com/labstack/echo/v4"
 )
 
@@ -261,7 +262,7 @@ func genResponseUnmarshal(op *OperationDefinition) string {
 	}
 
 	// Now build the switch statement in order of most-to-least specific:
-	// See: https://github.com/deepmap/oapi-codegen/issues/127 for why we handle this in two separate
+	// See: https://github.com/12kmps/codegen-go/issues/127 for why we handle this in two separate
 	// groups.
 	fmt.Fprintf(buffer, "switch {\n")
 	for _, caseClauseKey := range SortedStringKeys(handledCaseClauses) {
@@ -373,6 +374,10 @@ func isOther(op *OperationDefinition) bool {
 	}
 }
 
+func toKebabCase(s string) string {
+	return strcase.ToKebab(s)
+}
+
 // This function map is passed to the template engine, and we can call each
 // function here by keyName from the template code.
 var TemplateFunctions = template.FuncMap{
@@ -390,6 +395,7 @@ var TemplateFunctions = template.FuncMap{
 	"lcFirst":                          LowercaseFirstCharacter,
 	"ucFirst":                          UppercaseFirstCharacter,
 	"camelCase":                        ToCamelCase,
+	"kebabCase":                        toKebabCase,
 	"genResponsePayload":               genResponsePayload,
 	"genResponseTypeName":              genResponseTypeName,
 	"genResponseUnmarshal":             genResponseUnmarshal,
