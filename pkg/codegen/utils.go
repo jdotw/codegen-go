@@ -271,51 +271,6 @@ func IsWholeDocumentReference(ref string) bool {
 	return ref != "" && !strings.ContainsAny(ref, "#")
 }
 
-// This function converts a swagger style path URI with parameters to a
-// Echo compatible path URI. We need to replace all of Swagger parameters with
-// ":param". Valid input parameters are:
-//   {param}
-//   {param*}
-//   {.param}
-//   {.param*}
-//   {;param}
-//   {;param*}
-//   {?param}
-//   {?param*}
-func SwaggerUriToEchoUri(uri string) string {
-	return pathParamRE.ReplaceAllString(uri, ":$1")
-}
-
-// This function converts a swagger style path URI with parameters to a
-// Chi compatible path URI. We need to replace all of Swagger parameters with
-// "{param}". Valid input parameters are:
-//   {param}
-//   {param*}
-//   {.param}
-//   {.param*}
-//   {;param}
-//   {;param*}
-//   {?param}
-//   {?param*}
-func SwaggerUriToChiUri(uri string) string {
-	return pathParamRE.ReplaceAllString(uri, "{$1}")
-}
-
-// This function converts a swagger style path URI with parameters to a
-// Gin compatible path URI. We need to replace all of Swagger parameters with
-// ":param". Valid input parameters are:
-//   {param}
-//   {param*}
-//   {.param}
-//   {.param*}
-//   {;param}
-//   {;param*}
-//   {?param}
-//   {?param*}
-func SwaggerUriToGinUri(uri string) string {
-	return pathParamRE.ReplaceAllString(uri, ":$1")
-}
-
 // Returns the argument names, in order, in a given URI string, so for
 // /path/{param1}/{.param2*}/{?param3}, it would return param1, param2, param3
 func OrderedParamsFromUri(uri string) []string {
