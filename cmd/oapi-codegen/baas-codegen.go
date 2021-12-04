@@ -162,25 +162,15 @@ func main() {
 			cfg.PackageName = strings.ToLower(t)
 		}
 
-		// Re-load the swagger file because the codegen.Generate will
-		// apply its own filtering by tags. Hence we need a fresh instance
-		// each time
-		swagger, err := util.LoadSwagger(flag.Arg(0))
-		if err != nil {
-			errExit("error loading swagger spec in %s\n: %s", flag.Arg(0), err)
-		}
-
 		templates, err := loadTemplateOverrides(cfg.TemplatesDir)
 		if err != nil {
 			errExit("error loading template overrides: %s\n", err)
 		}
 
 		opts.UserTemplates = templates
-		opts.ImportMapping = cfg.ImportMapping
-		opts.IncludeTags = nil
-		opts.IncludeTags = append(opts.IncludeTags, t)
+		// opts.ImportMapping = cfg.ImportMapping
 
-		code, err := codegen.Generate(swagger, projectName, strings.ToLower(t), t, opts)
+		code, err := codegen.Generate(flag.Arg(0), projectName, strings.ToLower(t), t, opts)
 		if err != nil {
 			errExit("error generating code: %s\n", err)
 		}
@@ -240,7 +230,7 @@ func main() {
 	}
 
 	if opts.GenerateProject {
-		main, err := codegen.GenerateMain(flag.Arg(0), tags, opts)
+		main, err := codegen.GenerateMain(flag.Arg(0), projectName, tags, opts)
 		if err != nil {
 			errExit("error generating main code: %s\n", err)
 		}

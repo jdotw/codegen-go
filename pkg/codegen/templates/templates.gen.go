@@ -1017,56 +1017,6 @@ func make{{$opid}}Endpoint(s Service, logger log.Factory) endpoint.Endpoint {
 
 {{end}}
 
-
-// Create
-
-type CreateFacilityRequest struct {
-	Facility *api.DirectDebitFacility
-}
-
-func makeCreateFacilityEndpoint(s DirectDebitFacilityService, logger log.Factory) endpoint.Endpoint {
-	return func(ctx context.Context, request interface{}) (interface{}, error) {
-		logger.For(ctx).Info("CreateFacilityEndpoint received request")
-		req := request.(CreateFacilityRequest)
-		v, err := s.CreateFacility(ctx, req.Facility)
-		if err != nil {
-			return &v, err
-		}
-		return &v, nil
-	}
-}
-
-// Get
-
-type GetFacilityRequest struct {
-	ID string
-}
-
-func makeGetFacilityEndpoint(s DirectDebitFacilityService) endpoint.Endpoint {
-	return func(ctx context.Context, request interface{}) (interface{}, error) {
-		req := request.(GetFacilityRequest)
-		v, err := s.GetFacilityByID(ctx, req.ID)
-		if err != nil {
-			return &v, err
-		}
-		return &v, nil
-	}
-}
-
-// Update
-
-type UpdateFacilityRequest struct {
-	ID       string
-	Facility *api.DirectDebitFacility
-}
-
-func makeUpdateFacilityEndpoint(s DirectDebitFacilityService) endpoint.Endpoint {
-	return func(ctx context.Context, request interface{}) (interface{}, error) {
-		req := request.(UpdateFacilityRequest)
-		v, err := s.UpdateFacility(ctx, req.ID, req.Facility)
-		return &v, err
-	}
-}
 `,
 	"gin-interface.tmpl": `// ServerInterface represents all server handlers.
 type ServerInterface interface {
@@ -1362,6 +1312,11 @@ import (
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/go-chi/chi/v5"
 	"github.com/labstack/echo/v4"
+
+  "github.com/12kmps/baas/log"
+	"github.com/12kmps/baas/tracing"
+	"go.uber.org/zap"
+
 	{{- range .ExternalImports}}
 	{{ . }}
 	{{- end}}

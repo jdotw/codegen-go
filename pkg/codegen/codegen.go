@@ -92,7 +92,7 @@ func (im importMap) GoImports() []string {
 
 var importMapping importMap
 
-func constructImportMapping(input map[string]string) importMap {
+func constructImportMapping(swagger *openapi3.T, projectName string, input map[string]string) importMap {
 	var (
 		pathToName = map[string]string{}
 		result     = importMap{}
@@ -114,14 +114,22 @@ func constructImportMapping(input map[string]string) importMap {
 	for specPath, packagePath := range input {
 		result[specPath] = goImport{Name: pathToName[packagePath], Path: packagePath}
 	}
+
+	tags := util.UniquePathTags(swagger)
+	for _, s := range tags {
+		result[s] = goImport{Name: "", Path: "github.com/12kmps/baas/baas-" + projectName + "/" + strings.ToLower(s)}
+	}
+
 	return result
 }
 
 // Uses the Go templating engine to generate all of our server wrappers from
 // the descriptions we've built up above from the schema objects.
 // opts defines
-func Generate(swagger *openapi3.T, projectName string, packageName string, tag string, opts Options) (*Code, error) {
-	importMapping = constructImportMapping(opts.ImportMapping)
+func Generate(swaggerFile string, projectName string, packageName string, tag string, opts Options) (*Code, error) {
+	swagger, err := util.LoadSwagger(swaggerFile)
+
+	importMapping = constructImportMapping(swagger, projectName, opts.ImportMapping)
 
 	filterOperationsByTag(swagger, opts)
 	if !opts.SkipPrune {
@@ -133,7 +141,7 @@ func Generate(swagger *openapi3.T, projectName string, packageName string, tag s
 	t := template.New("oapi-codegen").Funcs(TemplateFunctions)
 	// This parses all of our own template files into the template object
 	// above
-	t, err := templates.Parse(t)
+	t, err = templates.Parse(t)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing oapi-codegen templates: %w", err)
 	}
@@ -265,15 +273,16 @@ type TagOperations struct {
 	Ops      []OperationDefinition
 }
 
-func GenerateMain(swaggerFile string, tags []string, opts Options) (*string, error) {
-	importMapping = constructImportMapping(opts.ImportMapping)
+func GenerateMain(swaggerFile string, projectName string, tags []string, opts Options) (*string, error) {
+	swagger, err := util.LoadSwagger(swaggerFile)
+	importMapping = constructImportMapping(swagger, projectName, opts.ImportMapping)
 
 	// This creates the golang templates text package
 	TemplateFunctions["opts"] = func() Options { return opts }
 	t := template.New("oapi-codegen").Funcs(TemplateFunctions)
 	// This parses all of our own template files into the template object
 	// above
-	t, err := templates.Parse(t)
+	t, err = templates.Parse(t)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing oapi-codegen templates: %w", err)
 	}
@@ -331,6 +340,9 @@ func renderString(opts Options, t *template.Template, packageName string, string
 	w := bufio.NewWriter(&buf)
 
 	externalImports := importMapping.GoImports()
+	for _, s := range externalImports {
+		println("EXT IMP: ", s)
+	}
 	importsOut, err := GenerateImports(t, externalImports, packageName)
 	if err != nil {
 		return "", fmt.Errorf("error generating imports: %w", err)
