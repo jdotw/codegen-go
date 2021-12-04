@@ -1,9 +1,8 @@
 type repository struct {
-	ctx context.Context
 	db  *gorm.DB
 }
 
-func NewGormRepository(ctx context.Context, connString string, tracer opentracing.Tracer, logger log.Factory) (Repository, error) {
+func NewGormRepository(ctx context.Context, connString string, logger log.Factory, tracer opentracing.Tracer) (Repository, error) {
 	var r Repository
 	{
 		db, err := gorm.Open(postgres.Open(connString), &gorm.Config{})
@@ -13,6 +12,10 @@ func NewGormRepository(ctx context.Context, connString string, tracer opentracin
 
 		db.Use(gormopentracing.New(gormopentracing.WithTracer(tracer)))
 
+    // TODO: Ensure these migrations are correct
+    // The OpenAPI Spec used to generate this code often uses
+    // results in AutoMigrate statements being generated for 
+    // request/response body objects instead of actual data models
     {{range uniqueResponseBodyTypes .Ops}}
 		err = db.AutoMigrate(&{{.}}{})
 		if err != nil {
@@ -20,7 +23,7 @@ func NewGormRepository(ctx context.Context, connString string, tracer opentracin
 		}
     {{end}}
 
-		r = &repository{ctx: ctx, db: db}
+		r = &repository{db: db}
 	}
 
 	return r, nil
@@ -50,6 +53,8 @@ func NewGormRepository(ctx context.Context, connString string, tracer opentracin
     return &v, nil
     {{end}}
     {{if isGet .}}
+    // TODO: Check the .First query as codegen is not able
+    // to elegantly deal with multiple request parameters
 	  var v {{$successResponse.Schema.GoType}}
 	  tx := p.db.WithContext(ctx).Model(&{{$successResponse.Schema.GoType}}{}).First(&v, "{{range $pathParams -}}{{.ParamName}} = ? {{end}}"{{range $pathParams -}}, {{.ParamName}}{{end}})
 	  if tx.Error == gorm.ErrRecordNotFound {
@@ -58,6 +63,8 @@ func NewGormRepository(ctx context.Context, connString string, tracer opentracin
   	return &v, tx.Error
     {{end}}
     {{if isUpdate .}}
+    // TODO: Check the .Where queries as codegen is not able
+    // to elegantly deal with multiple request parameters
 	  var v {{$successResponse.Schema.GoType}}
     {{range .Bodies}}
   	tx := p.db.WithContext(ctx).Model(&{{$successResponse.Schema.GoType}}{}){{range $pathParams -}}.Where("{{.ParamName}} = ?", {{.ParamName}}){{end}}.UpdateColumns({{lcFirst .Schema.GoType}})

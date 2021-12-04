@@ -528,7 +528,7 @@ networks:
 func NewEndpointSet(s Service, logger log.Factory, tracer opentracing.Tracer) EndpointSet { {{range .Ops}} 
   var {{lcFirst .OperationId}}Endpoint endpoint.Endpoint
 	{
-		{{lcFirst .OperationId}}Endpoint = make{{.OperationId}}Endpoint(s, logger)
+		{{lcFirst .OperationId}}Endpoint = make{{.OperationId}}Endpoint(s, logger, tracer)
 		{{lcFirst .OperationId}}Endpoint = kittracing.TraceServer(tracer, "{{.OperationId}}")({{lcFirst .OperationId}}Endpoint)
 	}{{end}}
 	return EndpointSet{ {{range .Ops}}
@@ -554,7 +554,7 @@ type {{$opid}}EndpointRequest struct {
   {{end}}
 }
 
-func make{{$opid}}Endpoint(s Service, logger log.Factory) endpoint.Endpoint {
+func make{{$opid}}Endpoint(s Service, logger log.Factory, tracer opentracing.Tracer) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		logger.For(ctx).Info("{{$tag}}.{{$opid}}Endpoint received request")
 		req := request.({{$opid}}EndpointRequest)
@@ -731,11 +731,11 @@ func GetSwagger() (swagger *openapi3.T, err error) {
 {{$tagPkg := .Package}}
   // {{$tag}} Service
   {
-		repo, err := {{$tagPkg}}.NewGormRepository(context.Background(), os.Getenv("POSTGRES_DSN"), tracer, logger)
+		repo, err := {{$tagPkg}}.NewGormRepository(context.Background(), os.Getenv("POSTGRES_DSN"), logger, tracer)
 		if err != nil {
 			logger.Bg().Fatal("Failed to create {{$tagPkg}} repository", zap.Error(err))
 		}
-		service := {{$tagPkg}}.NewService(repo, logger)
+		service := {{$tagPkg}}.NewService(repo, logger, tracer)
 		endPoints := {{$tagPkg}}.NewEndpointSet(service, logger, tracer)
 		{{$tagPkg}}.AddHTTPRoutes(r, endPoints, logger, tracer)
   } 
@@ -771,11 +771,10 @@ type {{.TypeName}} {{if and (opts.AliasTypes) (.CanAlias)}}={{end}} {{.Schema.Ty
 {{end}}
 `,
 	"repository-gorm.tmpl": `type repository struct {
-	ctx context.Context
 	db  *gorm.DB
 }
 
-func NewGormRepository(ctx context.Context, connString string, tracer opentracing.Tracer, logger log.Factory) (Repository, error) {
+func NewGormRepository(ctx context.Context, connString string, logger log.Factory, tracer opentracing.Tracer) (Repository, error) {
 	var r Repository
 	{
 		db, err := gorm.Open(postgres.Open(connString), &gorm.Config{})
@@ -785,6 +784,10 @@ func NewGormRepository(ctx context.Context, connString string, tracer opentracin
 
 		db.Use(gormopentracing.New(gormopentracing.WithTracer(tracer)))
 
+    // TODO: Ensure these migrations are correct
+    // The OpenAPI Spec used to generate this code often uses
+    // results in AutoMigrate statements being generated for 
+    // request/response body objects instead of actual data models
     {{range uniqueResponseBodyTypes .Ops}}
 		err = db.AutoMigrate(&{{.}}{})
 		if err != nil {
@@ -792,7 +795,7 @@ func NewGormRepository(ctx context.Context, connString string, tracer opentracin
 		}
     {{end}}
 
-		r = &repository{ctx: ctx, db: db}
+		r = &repository{db: db}
 	}
 
 	return r, nil
@@ -822,6 +825,8 @@ func NewGormRepository(ctx context.Context, connString string, tracer opentracin
     return &v, nil
     {{end}}
     {{if isGet .}}
+    // TODO: Check the .First query as codegen is not able
+    // to elegantly deal with multiple request parameters
 	  var v {{$successResponse.Schema.GoType}}
 	  tx := p.db.WithContext(ctx).Model(&{{$successResponse.Schema.GoType}}{}).First(&v, "{{range $pathParams -}}{{.ParamName}} = ? {{end}}"{{range $pathParams -}}, {{.ParamName}}{{end}})
 	  if tx.Error == gorm.ErrRecordNotFound {
@@ -830,6 +835,8 @@ func NewGormRepository(ctx context.Context, connString string, tracer opentracin
   	return &v, tx.Error
     {{end}}
     {{if isUpdate .}}
+    // TODO: Check the .Where queries as codegen is not able
+    // to elegantly deal with multiple request parameters
 	  var v {{$successResponse.Schema.GoType}}
     {{range .Bodies}}
   	tx := p.db.WithContext(ctx).Model(&{{$successResponse.Schema.GoType}}{}){{range $pathParams -}}.Where("{{.ParamName}} = ?", {{.ParamName}}){{end}}.UpdateColumns({{lcFirst .Schema.GoType}})
@@ -881,7 +888,7 @@ type service struct {
 	repository Repository
 }
 
-func NewService(repository Repository, logger log.Factory) Service {
+func NewService(repository Repository, logger log.Factory, tracer opentracing.Tracer) Service {
 	var svc Service
 	{
 		svc = &service{

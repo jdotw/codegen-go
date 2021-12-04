@@ -14,7 +14,7 @@ type service struct {
 	repository Repository
 }
 
-func NewService(repository Repository, logger log.Factory) Service {
+func NewService(repository Repository, logger log.Factory, tracer opentracing.Tracer) Service {
 	var svc Service
 	{
 		svc = &service{

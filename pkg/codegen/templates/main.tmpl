@@ -14,11 +14,11 @@ func main() {
 {{$tagPkg := .Package}}
   // {{$tag}} Service
   {
-		repo, err := {{$tagPkg}}.NewGormRepository(context.Background(), os.Getenv("POSTGRES_DSN"), tracer, logger)
+		repo, err := {{$tagPkg}}.NewGormRepository(context.Background(), os.Getenv("POSTGRES_DSN"), logger, tracer)
 		if err != nil {
 			logger.Bg().Fatal("Failed to create {{$tagPkg}} repository", zap.Error(err))
 		}
-		service := {{$tagPkg}}.NewService(repo, logger)
+		service := {{$tagPkg}}.NewService(repo, logger, tracer)
 		endPoints := {{$tagPkg}}.NewEndpointSet(service, logger, tracer)
 		{{$tagPkg}}.AddHTTPRoutes(r, endPoints, logger, tracer)
   } 
