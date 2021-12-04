@@ -87,6 +87,11 @@ func ToCamelCase(str string) string {
 			capNext = false
 		}
 	}
+
+	if strings.HasSuffix(n, "Id") {
+		n = strings.TrimSuffix(n, "Id") + "ID"
+	}
+
 	return n
 }
 

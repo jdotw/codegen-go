@@ -116,6 +116,12 @@ func (pd ParameterDefinition) GoVariableName() string {
 	if unicode.IsNumber([]rune(name)[0]) {
 		name = "n" + name
 	}
+	if name == "iD" {
+		name = "id"
+	}
+	if strings.HasSuffix(name, "Id") {
+		name = strings.TrimSuffix(name, "Id") + "ID"
+	}
 	return name
 }
 
