@@ -196,9 +196,8 @@ func DescribeSecurityDefinition(securityRequirements openapi3.SecurityRequiremen
 
 // This structure describes an Operation
 type OperationDefinition struct {
-	Tag                   string
-	OperationId           string // The operation_id description from Swagger, used to generate function names
-	OperationIdLowerCamel string
+	Tag         string
+	OperationId string // The operation_id description from Swagger, used to generate function names
 
 	PathParams          []ParameterDefinition // Parameters in the path, eg, /path/:param
 	HeaderParams        []ParameterDefinition // Parameters in HTTP headers
@@ -435,13 +434,12 @@ func OperationDefinitions(swagger *openapi3.T, tag string) (*TagOperations, erro
 			}
 
 			opDef := OperationDefinition{
-				Tag:                   tag,
-				PathParams:            pathParams,
-				HeaderParams:          FilterParameterDefinitionByType(allParams, "header"),
-				QueryParams:           FilterParameterDefinitionByType(allParams, "query"),
-				CookieParams:          FilterParameterDefinitionByType(allParams, "cookie"),
-				OperationId:           ToCamelCase(op.OperationID),
-				OperationIdLowerCamel: strcase.ToLowerCamel(op.OperationID),
+				Tag:          tag,
+				PathParams:   pathParams,
+				HeaderParams: FilterParameterDefinitionByType(allParams, "header"),
+				QueryParams:  FilterParameterDefinitionByType(allParams, "query"),
+				CookieParams: FilterParameterDefinitionByType(allParams, "cookie"),
+				OperationId:  ToCamelCase(op.OperationID),
 				// Replace newlines in summary.
 				Summary:         op.Summary,
 				Method:          opName,

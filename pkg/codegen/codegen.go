@@ -243,7 +243,6 @@ func Generate(swaggerFile string, projectName string, packageName string, tag st
 	if opts.GenerateTransports {
 		transports, err = renderString(opts, t, packageName, []string{transportOut})
 	}
-	println("TRANSPORT_OUT: ", transportOut)
 	var endpoints string
 	if opts.GenerateEndpoints {
 		endpoints, err = renderString(opts, t, packageName, []string{endpointsOut})
@@ -340,9 +339,6 @@ func renderString(opts Options, t *template.Template, packageName string, string
 	w := bufio.NewWriter(&buf)
 
 	externalImports := importMapping.GoImports()
-	for _, s := range externalImports {
-		println("EXT IMP: ", s)
-	}
 	importsOut, err := GenerateImports(t, externalImports, packageName)
 	if err != nil {
 		return "", fmt.Errorf("error generating imports: %w", err)
@@ -376,7 +372,6 @@ func renderString(opts Options, t *template.Template, packageName string, string
 
 	outBytes, err := imports.Process(packageName+".go", []byte(goCode), nil)
 	if err != nil {
-		println("ERRR: ", err.Error())
 		return "", fmt.Errorf("error formatting Go code: %w", err)
 	}
 

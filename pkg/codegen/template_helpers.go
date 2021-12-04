@@ -51,6 +51,14 @@ func genParamArgs(params []ParameterDefinition) string {
 	return ", " + strings.Join(parts, ", ")
 }
 
+func hasEndpointRequestVars(params []ParameterDefinition) bool {
+	if len(params) > 0 {
+		return true
+	} else {
+		return false
+	}
+}
+
 func genEndpointRequestVars(params []ParameterDefinition) string {
 	if len(params) == 0 {
 		return ""
@@ -60,7 +68,7 @@ func genEndpointRequestVars(params []ParameterDefinition) string {
 		paramName := p.GoVariableName()
 		parts[i] = fmt.Sprintf("%s: vars[\"%s\"],\n", ToCamelCase(paramName), p.ParamName)
 	}
-	return strings.Join(parts, ", ")
+	return strings.Join(parts, "")
 }
 
 func genEndpointRequestDefs(params []ParameterDefinition) string {
@@ -77,6 +85,23 @@ func genEndpointRequestDefs(params []ParameterDefinition) string {
 
 func genErrorStringVar() string {
 	return "Error string `json:\"error,omitempty\"`"
+}
+
+func uniqueBodyTypes(ops []OperationDefinition) []string {
+	var bodyTypesByType map[string]bool
+	bodyTypesByType = make(map[string]bool)
+	for _, op := range ops {
+		for _, body := range op.Bodies {
+			if !bodyTypesByType[body.Schema.GoType] {
+				bodyTypesByType[body.Schema.GoType] = true
+			}
+		}
+	}
+	var uniqueBodyTypes []string
+	for k, _ := range bodyTypesByType {
+		uniqueBodyTypes = append(uniqueBodyTypes, k)
+	}
+	return uniqueBodyTypes
 }
 
 // This function is much like the one above, except it only produces the
@@ -273,6 +298,27 @@ func getResponseTypeDefinitions(op *OperationDefinition) []ResponseTypeDefinitio
 	return td
 }
 
+func getSuccessResponseTypeDefinition(op *OperationDefinition) *ResponseTypeDefinition {
+	td, err := op.GetResponseTypeDefinitions()
+	if err != nil {
+		panic(err)
+	}
+	for _, t := range td {
+		if t.TypeName == "JSON200" {
+			return &t
+		}
+	}
+	return nil
+}
+
+func isBoolResponseType(r *ResponseTypeDefinition) bool {
+	if r.Schema.GoType == "bool" {
+		return true
+	} else {
+		return false
+	}
+}
+
 // Return the statusCode comparison clause from the response name.
 func getConditionOfResponseName(statusCodeVar, responseName string) string {
 	switch responseName {
@@ -296,7 +342,7 @@ func stripNewLines(s string) string {
 }
 
 func isCreate(op *OperationDefinition) bool {
-	if op.OperationId == "Create" {
+	if strings.HasPrefix(op.OperationId, "Create") {
 		return true
 	} else {
 		return false
@@ -304,7 +350,7 @@ func isCreate(op *OperationDefinition) bool {
 }
 
 func isUpdate(op *OperationDefinition) bool {
-	if op.OperationId == "Update" {
+	if strings.HasPrefix(op.OperationId, "Update") {
 		return true
 	} else {
 		return false
@@ -312,7 +358,7 @@ func isUpdate(op *OperationDefinition) bool {
 }
 
 func isGet(op *OperationDefinition) bool {
-	if op.OperationId == "Get" {
+	if strings.HasPrefix(op.OperationId, "Get") {
 		return true
 	} else {
 		return false
@@ -330,30 +376,34 @@ func isOther(op *OperationDefinition) bool {
 // This function map is passed to the template engine, and we can call each
 // function here by keyName from the template code.
 var TemplateFunctions = template.FuncMap{
-	"genParamArgs":               genParamArgs,
-	"genParamTypes":              genParamTypes,
-	"genParamNames":              genParamNames,
-	"genParamFmtString":          ReplacePathParamsWithStr,
-	"genEndpointRequestVars":     genEndpointRequestVars,
-	"genEndpointRequestDefs":     genEndpointRequestDefs,
-	"genErrorStringVar":          genErrorStringVar,
-	"swaggerUriToEchoUri":        SwaggerUriToEchoUri,
-	"swaggerUriToChiUri":         SwaggerUriToChiUri,
-	"swaggerUriToGinUri":         SwaggerUriToGinUri,
-	"lcFirst":                    LowercaseFirstCharacter,
-	"ucFirst":                    UppercaseFirstCharacter,
-	"camelCase":                  ToCamelCase,
-	"genResponsePayload":         genResponsePayload,
-	"genResponseTypeName":        genResponseTypeName,
-	"genResponseUnmarshal":       genResponseUnmarshal,
-	"getResponseTypeDefinitions": getResponseTypeDefinitions,
-	"toStringArray":              toStringArray,
-	"lower":                      strings.ToLower,
-	"title":                      strings.Title,
-	"stripNewLines":              stripNewLines,
-	"sanitizeGoIdentity":         SanitizeGoIdentity,
-	"isCreate":                   isCreate,
-	"isUpdate":                   isUpdate,
-	"isGet":                      isGet,
-	"isOther":                    isOther,
+	"genParamArgs":                     genParamArgs,
+	"genParamTypes":                    genParamTypes,
+	"genParamNames":                    genParamNames,
+	"genParamFmtString":                ReplacePathParamsWithStr,
+	"genEndpointRequestVars":           genEndpointRequestVars,
+	"hasEndpointRequestVars":           hasEndpointRequestVars,
+	"genEndpointRequestDefs":           genEndpointRequestDefs,
+	"genErrorStringVar":                genErrorStringVar,
+	"swaggerUriToEchoUri":              SwaggerUriToEchoUri,
+	"swaggerUriToChiUri":               SwaggerUriToChiUri,
+	"swaggerUriToGinUri":               SwaggerUriToGinUri,
+	"lcFirst":                          LowercaseFirstCharacter,
+	"ucFirst":                          UppercaseFirstCharacter,
+	"camelCase":                        ToCamelCase,
+	"genResponsePayload":               genResponsePayload,
+	"genResponseTypeName":              genResponseTypeName,
+	"genResponseUnmarshal":             genResponseUnmarshal,
+	"getResponseTypeDefinitions":       getResponseTypeDefinitions,
+	"getSuccessResponseTypeDefinition": getSuccessResponseTypeDefinition,
+	"toStringArray":                    toStringArray,
+	"lower":                            strings.ToLower,
+	"title":                            strings.Title,
+	"stripNewLines":                    stripNewLines,
+	"sanitizeGoIdentity":               SanitizeGoIdentity,
+	"isCreate":                         isCreate,
+	"isUpdate":                         isUpdate,
+	"isGet":                            isGet,
+	"isOther":                          isOther,
+	"uniqueBodyTypes":                  uniqueBodyTypes,
+	"isBoolResponseType":               isBoolResponseType,
 }

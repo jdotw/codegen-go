@@ -11,34 +11,36 @@ func NewHTTPRouter(endpoints EndpointSet, logger log.Factory, tracer opentracing
 {{$hasParams := .RequiresParamObject -}}
 {{$pathParams := .PathParams -}}
 {{$opid := .OperationId -}}
-	{{ .OperationIdLowerCamel }}Handler := httptransport.NewServer(
+	{{lcFirst .OperationId}}Handler := httptransport.NewServer(
 		endpoints.{{$opid}}Endpoint,
 		decode{{$opid}}Request,
 		encodeResponse,
 		options...,
 	)
-	r.Handle("{{.Path}}", {{$opid}}Handler).Methods("{{.Method}}")
+	r.Handle("{{.Path}}", {{lcFirst $opid}}Handler).Methods("{{.Method}}")
 {{end}}
 
 	return r
 }
 
 {{range .Ops}}
-{{$hasParams := .RequiresParamObject -}}
 {{$pathParams := .PathParams -}}
 {{$opid := .OperationId -}}
 
 // {{$opid}}
 
 func decode{{$opid}}Request(_ context.Context, r *http.Request) (interface{}, error) {
-  {{if .HasBody}}var body {{$opid}}Request
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+  {{range .Bodies}}var {{lcFirst .Schema.GoType}} {{.Schema.GoType}}{{end}}
+  {{range .Bodies}}
+	if err := json.NewDecoder(r.Body).Decode(&{{lcFirst .Schema.GoType}}); err != nil {
 		return nil, err
 	}{{end}}
 
+  {{if hasEndpointRequestVars $pathParams}}
 	vars := mux.Vars(r)
+  {{end}}
 	request := {{$opid}}Request{
-    {{genEndpointRequestVars $pathParams}} {{if .HasBody}}{{$tag}}: body,{{end}}
+    {{genEndpointRequestVars $pathParams}} {{range .Bodies}}{{.Schema.GoType}}: &{{lcFirst .Schema.GoType}},{{end}}
 	}
 	return request, nil
 }

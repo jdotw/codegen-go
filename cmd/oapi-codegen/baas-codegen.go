@@ -82,7 +82,7 @@ func main() {
 			fmt.Fprintln(os.Stderr, "error reading build info")
 			os.Exit(1)
 		}
-		fmt.Println(bi.Main.Path + "/cmd/oapi-codegen")
+		fmt.Println(bi.Main.Path + "/cmd/baas-codegen")
 		fmt.Println(bi.Main.Version)
 		return
 	}

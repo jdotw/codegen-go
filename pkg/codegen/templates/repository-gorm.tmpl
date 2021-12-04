@@ -13,10 +13,12 @@ func NewGormRepository(ctx context.Context, connString string, tracer opentracin
 
 		db.Use(gormopentracing.New(gormopentracing.WithTracer(tracer)))
 
-		err = db.AutoMigrate(&api.DirectDebitFacility{})
+    {{range uniqueBodyTypes .Ops}}
+		err = db.AutoMigrate(&{{.}}{})
 		if err != nil {
-			logger.For(ctx).Fatal("Failed to migrate db", zap.Error(err))
+			logger.For(ctx).Fatal("Failed to migrate db for type {{.}}", zap.Error(err))
 		}
+    {{end}}
 
 		r = &repository{ctx: ctx, db: db}
 	}
@@ -30,12 +32,25 @@ func NewGormRepository(ctx context.Context, connString string, tracer opentracin
 {{$pathParams := .PathParams -}}
 {{$opid := .OperationId -}}
 {{$tag := .Tag -}}
-  func (p *repository) {{$opid}}(ctx context.Context{{range .PathParams -}}, {{.ParamName}} string{{end}}{{if .HasBody}}, v *{{$tag}}{{end}}) (*{{$tag}}, error) {
-    {{if isCreate .}}tx := p.db.WithContext(ctx).Create(&v)
-	  return tx.Error
+{{$successResponse := getSuccessResponseTypeDefinition .}}
+  func (p *repository) {{$opid}}(ctx context.Context{{range .PathParams -}}, {{.ParamName}} string{{end}}{{range .Bodies}}, {{lcFirst .Schema.GoType}} *{{.Schema.GoType}}{{end}}) (*{{$successResponse.Schema.GoType}}, error) {
+    {{if isCreate .}}
+    var tx *gorm.DB
+	  var v {{$successResponse.Schema.GoType}}
+    {{$opBodies := .Bodies}}
+    {{range $opBodies}}
+    tx = p.db.WithContext(ctx).Create(&{{lcFirst .Schema.GoType}})
+    if (tx.Error != nil) {
+      return nil, tx.Error
+    }
+    {{end}}
+    {{if isBoolResponseType $successResponse}}
+    v = true
+    {{end}}
+    return &v, nil
     {{end}}
     {{if isGet .}}
-	  var v {{$tag}}
+	  var v {{$successResponse.Schema.GoType}}
 	  tx := p.db.WithContext(ctx).First(&v, "id = ?", id)
 	  if tx.Error == gorm.ErrRecordNotFound {
 		  return nil, recorderrors.ErrNotFound
@@ -43,12 +58,13 @@ func NewGormRepository(ctx context.Context, connString string, tracer opentracin
   	return &v, tx.Error
     {{end}}
     {{if isUpdate .}}
+	  var v {{$successResponse.Schema.GoType}}
   	tx := p.db.WithContext(ctx).Model(&{{$tag}}{}).Where("id = ?", id).UpdateColumns(v)
 	  if tx.RowsAffected == 0 {
 		  return nil, recorderrors.ErrNotFound
 	  }
 	  v.ID = &id
-  	return v, tx.Error
+  	return &v, tx.Error
     {{end}}
     {{if isOther .}}
     // TODO: Unable to generate code for this Operation

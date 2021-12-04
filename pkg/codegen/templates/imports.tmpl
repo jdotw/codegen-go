@@ -23,13 +23,20 @@ import (
 
 	"github.com/deepmap/oapi-codegen/pkg/runtime"
 	openapi_types "github.com/deepmap/oapi-codegen/pkg/types"
-	"github.com/getkin/kin-openapi/openapi3"
-	"github.com/go-chi/chi/v5"
-	"github.com/labstack/echo/v4"
 
   "github.com/12kmps/baas/log"
 	"github.com/12kmps/baas/tracing"
 	"go.uber.org/zap"
+	"github.com/go-kit/kit/endpoint"
+	kittracing "github.com/go-kit/kit/tracing/opentracing"
+	"github.com/opentracing/opentracing-go"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+	gormopentracing "gorm.io/plugin/opentracing"
+ 	httptransport "github.com/go-kit/kit/transport/http"
+	"github.com/gorilla/mux"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+
 
 	{{- range .ExternalImports}}
 	{{ . }}
