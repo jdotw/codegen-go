@@ -21,7 +21,7 @@ func NewEndpointSet(s Service, logger log.Factory, tracer opentracing.Tracer) En
 {{$tag := .Tag -}}
 // {{$opid}} 
 
-type {{$opid}}Request struct {
+type {{$opid}}EndpointRequest struct {
   {{range .PathParams -}}
   {{camelCase .ParamName}} string
   {{end}}
@@ -35,7 +35,7 @@ type {{$opid}}Request struct {
 func make{{$opid}}Endpoint(s Service, logger log.Factory) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		logger.For(ctx).Info("{{$tag}}.{{$opid}}Endpoint received request")
-		req := request.({{$opid}}Request)
+		req := request.({{$opid}}EndpointRequest)
 		v, err := s.{{$opid}}(ctx{{range .PathParams -}}, req.{{camelCase .ParamName}}{{end}}{{range .Bodies}}, req.{{.Schema.GoType}}{{end}})
 		if err != nil {
 			return &v, err

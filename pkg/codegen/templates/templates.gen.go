@@ -492,6 +492,34 @@ const (
 {{end}}
 {{end}}
 `,
+	"docker-compose.yaml.tmpl": `version: "3.9"
+services:
+  {{ .ProjectName }}:
+    build: 
+      context: .
+      args:
+        GITHUB_PAT: ${GITHUB_PAT}
+    ports:
+      - "8083:8083"
+      - "8084:8084"
+    environment:
+      POSTGRES_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@baas-account_db:5432/${POSTGRES_DB}
+      POSTGRES_DSN: host=baas-account_db user=${POSTGRES_USER} password=${POSTGRES_PASSWORD} dbname=${POSTGRES_DB} port=5432 sslmode=disable TimeZone=Australia/Sydney
+      JAEGER_AGENT_HOST: jaeger
+      JAEGER_AGENT_PORT: 6831
+    networks:
+      - postgres
+      - baas-account_tracing
+    depends_on:
+      - db
+    restart: unless-stopped
+
+networks:
+  postgres:
+    driver: bridge
+  baas-account_tracing:
+    external: true
+`,
 	"endpoint.tmpl": `type EndpointSet struct {
 {{range .Ops}}
   {{.OperationId}}Endpoint    endpoint.Endpoint{{end}}
@@ -515,7 +543,7 @@ func NewEndpointSet(s Service, logger log.Factory, tracer opentracing.Tracer) En
 {{$tag := .Tag -}}
 // {{$opid}} 
 
-type {{$opid}}Request struct {
+type {{$opid}}EndpointRequest struct {
   {{range .PathParams -}}
   {{camelCase .ParamName}} string
   {{end}}
@@ -529,7 +557,7 @@ type {{$opid}}Request struct {
 func make{{$opid}}Endpoint(s Service, logger log.Factory) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		logger.For(ctx).Info("{{$tag}}.{{$opid}}Endpoint received request")
-		req := request.({{$opid}}Request)
+		req := request.({{$opid}}EndpointRequest)
 		v, err := s.{{$opid}}(ctx{{range .PathParams -}}, req.{{camelCase .ParamName}}{{end}}{{range .Bodies}}, req.{{.Schema.GoType}}{{end}})
 		if err != nil {
 			return &v, err
@@ -688,13 +716,13 @@ func GetSwagger() (swagger *openapi3.T, err error) {
 }
 `,
 	"main.tmpl": `func main() {
-	serviceName := "direct-debit"
+	serviceName := "{{.Project}}"
 
 	// Logging and Tracing
 	logger, metricsFactory := log.Init(serviceName)
 	tracer := tracing.Init(serviceName, metricsFactory, logger)
 
-{{range . -}}
+{{range .TagOps -}}
 {{$tag := .Tag}}
 {{$tagVar := .TagCamel}}
 {{$tagPkg := .Package}}
@@ -713,7 +741,7 @@ func GetSwagger() (swagger *openapi3.T, err error) {
 
   m := tracing.NewServeMux(tracer)
 	m.Handle("/metrics", promhttp.Handler()) // Prometheus
-{{range . -}}
+{{range .TagOps -}}
 {{$tag := .Tag}}
 {{$tagVar := .TagCamel}}
 {{$tagPkg := .Package}}
@@ -758,7 +786,7 @@ func NewGormRepository(ctx context.Context, connString string, tracer opentracin
 
 		db.Use(gormopentracing.New(gormopentracing.WithTracer(tracer)))
 
-    {{range uniqueBodyTypes .Ops}}
+    {{range uniqueResponseBodyTypes .Ops}}
 		err = db.AutoMigrate(&{{.}}{})
 		if err != nil {
 			logger.For(ctx).Fatal("Failed to migrate db for type {{.}}", zap.Error(err))
@@ -796,7 +824,7 @@ func NewGormRepository(ctx context.Context, connString string, tracer opentracin
     {{end}}
     {{if isGet .}}
 	  var v {{$successResponse.Schema.GoType}}
-	  tx := p.db.WithContext(ctx).First(&v, "id = ?", id)
+	  tx := p.db.WithContext(ctx).Model(&{{$successResponse.Schema.GoType}}{}).First(&v, "{{range $pathParams -}}{{.ParamName}} = ? {{end}}"{{range $pathParams -}}, {{.ParamName}}{{end}})
 	  if tx.Error == gorm.ErrRecordNotFound {
 		  return nil, recorderrors.ErrNotFound
   	}
@@ -804,11 +832,12 @@ func NewGormRepository(ctx context.Context, connString string, tracer opentracin
     {{end}}
     {{if isUpdate .}}
 	  var v {{$successResponse.Schema.GoType}}
-  	tx := p.db.WithContext(ctx).Model(&{{$tag}}{}).Where("id = ?", id).UpdateColumns(v)
+    {{range .Bodies}}
+  	tx := p.db.WithContext(ctx).Model(&{{$successResponse.Schema.GoType}}{}){{range $pathParams -}}.Where("{{.ParamName}} = ?", {{.ParamName}}){{end}}.UpdateColumns({{lcFirst .Schema.GoType}})
 	  if tx.RowsAffected == 0 {
 		  return nil, recorderrors.ErrNotFound
 	  }
-	  v.ID = &id
+    {{end}}
   	return &v, tx.Error
     {{end}}
     {{if isOther .}}
@@ -890,7 +919,7 @@ func NewHTTPRouter(endpoints EndpointSet, logger log.Factory, tracer opentracing
 {{$opid := .OperationId -}}
 	{{lcFirst .OperationId}}Handler := httptransport.NewServer(
 		endpoints.{{$opid}}Endpoint,
-		decode{{$opid}}Request,
+		decode{{$opid}}EndpointRequest,
 		encodeResponse,
 		options...,
 	)
@@ -906,7 +935,7 @@ func NewHTTPRouter(endpoints EndpointSet, logger log.Factory, tracer opentracing
 
 // {{$opid}}
 
-func decode{{$opid}}Request(_ context.Context, r *http.Request) (interface{}, error) {
+func decode{{$opid}}EndpointRequest(_ context.Context, r *http.Request) (interface{}, error) {
   {{range .Bodies}}var {{lcFirst .Schema.GoType}} {{.Schema.GoType}}{{end}}
   {{range .Bodies}}
 	if err := json.NewDecoder(r.Body).Decode(&{{lcFirst .Schema.GoType}}); err != nil {
@@ -916,7 +945,7 @@ func decode{{$opid}}Request(_ context.Context, r *http.Request) (interface{}, er
   {{if hasEndpointRequestVars $pathParams}}
 	vars := mux.Vars(r)
   {{end}}
-	request := {{$opid}}Request{
+	request := {{$opid}}EndpointRequest{
     {{genEndpointRequestVars $pathParams}} {{range .Bodies}}{{.Schema.GoType}}: &{{lcFirst .Schema.GoType}},{{end}}
 	}
 	return request, nil

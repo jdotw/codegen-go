@@ -87,21 +87,21 @@ func genErrorStringVar() string {
 	return "Error string `json:\"error,omitempty\"`"
 }
 
-func uniqueBodyTypes(ops []OperationDefinition) []string {
+func uniqueResponseBodyTypes(ops []OperationDefinition) []string {
 	var bodyTypesByType map[string]bool
 	bodyTypesByType = make(map[string]bool)
 	for _, op := range ops {
-		for _, body := range op.Bodies {
-			if !bodyTypesByType[body.Schema.GoType] {
+		for _, body := range getResponseTypeDefinitions(&op) {
+			if body.TypeName == "JSON200" && !bodyTypesByType[body.Schema.GoType] {
 				bodyTypesByType[body.Schema.GoType] = true
 			}
 		}
 	}
-	var uniqueBodyTypes []string
+	var uniqueResponseBodyTypes []string
 	for k, _ := range bodyTypesByType {
-		uniqueBodyTypes = append(uniqueBodyTypes, k)
+		uniqueResponseBodyTypes = append(uniqueResponseBodyTypes, k)
 	}
-	return uniqueBodyTypes
+	return uniqueResponseBodyTypes
 }
 
 // This function is much like the one above, except it only produces the
@@ -406,6 +406,6 @@ var TemplateFunctions = template.FuncMap{
 	"isUpdate":                         isUpdate,
 	"isGet":                            isGet,
 	"isOther":                          isOther,
-	"uniqueBodyTypes":                  uniqueBodyTypes,
+	"uniqueResponseBodyTypes":          uniqueResponseBodyTypes,
 	"isBoolResponseType":               isBoolResponseType,
 }

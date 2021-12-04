@@ -145,7 +145,7 @@ func main() {
 	baseName := filepath.Base(path)
 	// Split the base name on '.' to get the first part of the file.
 	nameParts := strings.Split(baseName, ".")
-	projectName := strcase.ToKebab(strings.ToLower(nameParts[0]))
+	projectName := strcase.ToKebab(nameParts[0])
 
 	tags := util.UniquePathTags(swagger)
 	for _, t := range tags {

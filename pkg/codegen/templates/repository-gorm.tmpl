@@ -13,7 +13,7 @@ func NewGormRepository(ctx context.Context, connString string, tracer opentracin
 
 		db.Use(gormopentracing.New(gormopentracing.WithTracer(tracer)))
 
-    {{range uniqueBodyTypes .Ops}}
+    {{range uniqueResponseBodyTypes .Ops}}
 		err = db.AutoMigrate(&{{.}}{})
 		if err != nil {
 			logger.For(ctx).Fatal("Failed to migrate db for type {{.}}", zap.Error(err))
@@ -51,7 +51,7 @@ func NewGormRepository(ctx context.Context, connString string, tracer opentracin
     {{end}}
     {{if isGet .}}
 	  var v {{$successResponse.Schema.GoType}}
-	  tx := p.db.WithContext(ctx).First(&v, "id = ?", id)
+	  tx := p.db.WithContext(ctx).Model(&{{$successResponse.Schema.GoType}}{}).First(&v, "{{range $pathParams -}}{{.ParamName}} = ? {{end}}"{{range $pathParams -}}, {{.ParamName}}{{end}})
 	  if tx.Error == gorm.ErrRecordNotFound {
 		  return nil, recorderrors.ErrNotFound
   	}
@@ -59,11 +59,12 @@ func NewGormRepository(ctx context.Context, connString string, tracer opentracin
     {{end}}
     {{if isUpdate .}}
 	  var v {{$successResponse.Schema.GoType}}
-  	tx := p.db.WithContext(ctx).Model(&{{$tag}}{}).Where("id = ?", id).UpdateColumns(v)
+    {{range .Bodies}}
+  	tx := p.db.WithContext(ctx).Model(&{{$successResponse.Schema.GoType}}{}){{range $pathParams -}}.Where("{{.ParamName}} = ?", {{.ParamName}}){{end}}.UpdateColumns({{lcFirst .Schema.GoType}})
 	  if tx.RowsAffected == 0 {
 		  return nil, recorderrors.ErrNotFound
 	  }
-	  v.ID = &id
+    {{end}}
   	return &v, tx.Error
     {{end}}
     {{if isOther .}}

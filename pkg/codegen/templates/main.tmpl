@@ -1,11 +1,11 @@
 func main() {
-	serviceName := "direct-debit"
+	serviceName := "{{.Project}}"
 
 	// Logging and Tracing
 	logger, metricsFactory := log.Init(serviceName)
 	tracer := tracing.Init(serviceName, metricsFactory, logger)
 
-{{range . -}}
+{{range .TagOps -}}
 {{$tag := .Tag}}
 {{$tagVar := .TagCamel}}
 {{$tagPkg := .Package}}
@@ -24,7 +24,7 @@ func main() {
 
   m := tracing.NewServeMux(tracer)
 	m.Handle("/metrics", promhttp.Handler()) // Prometheus
-{{range . -}}
+{{range .TagOps -}}
 {{$tag := .Tag}}
 {{$tagVar := .TagCamel}}
 {{$tagPkg := .Package}}

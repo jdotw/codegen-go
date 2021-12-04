@@ -269,6 +269,11 @@ type TagOperations struct {
 	Ops      []OperationDefinition
 }
 
+type MainTemplateInputs struct {
+	TagOps  []TagOperations
+	Project string
+}
+
 func GenerateMain(swaggerFile string, projectName string, tags []string, opts Options) (*string, error) {
 	swagger, err := util.LoadSwagger(swaggerFile)
 	importMapping = constructImportMapping(swagger, projectName, opts.ImportMapping)
@@ -303,7 +308,10 @@ func GenerateMain(swaggerFile string, projectName string, tags []string, opts Op
 	}
 
 	var mainOut string
-	mainOut, err = GenerateMainDefinitions(t, tagOps)
+	mainOut, err = GenerateMainDefinitions(t, MainTemplateInputs{
+		Project: projectName,
+		TagOps:  tagOps,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("error generating main: %w", err)
 	}
@@ -376,8 +384,8 @@ func renderString(opts Options, t *template.Template, packageName string, string
 }
 
 // Generates main.go file
-func GenerateMainDefinitions(t *template.Template, tagOps []TagOperations) (string, error) {
-	return GenerateTemplates([]string{"main.tmpl"}, t, tagOps)
+func GenerateMainDefinitions(t *template.Template, mainInputs MainTemplateInputs) (string, error) {
+	return GenerateTemplates([]string{"main.tmpl"}, t, mainInputs)
 }
 
 func GenerateProjectDefinitions(t *template.Template, projectName string) (string, error) {
