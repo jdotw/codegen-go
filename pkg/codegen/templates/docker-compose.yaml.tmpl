@@ -1,0 +1,25 @@
+version: "3.9"
+services:
+  {{ .ProjectName }}:
+    build: 
+      context: .
+      args:
+        GITHUB_USER: ${GITHUB_USER}
+        GITHUB_PAT: ${GITHUB_PAT}
+    ports:
+      - "8080:8080"
+    environment:
+      POSTGRES_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      POSTGRES_DSN: host=db user=${POSTGRES_USER} password=${POSTGRES_PASSWORD} dbname=${POSTGRES_DB} port=5432 sslmode=disable TimeZone=Australia/Sydney
+      JAEGER_AGENT_HOST: jaeger
+      JAEGER_AGENT_PORT: 6831
+    networks:
+      - baas-{{ .ClusterName }}_db
+      - baas-{{ .ClusterName }}_telemetry
+    restart: unless-stopped
+
+networks:
+  baas-{{ .ClusterName }}_db:
+    external: true
+  baas-{{ .ClusterName }}_telemetry:
+    external: true

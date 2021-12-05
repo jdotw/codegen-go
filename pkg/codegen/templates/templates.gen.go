@@ -498,27 +498,53 @@ services:
     build: 
       context: .
       args:
+        GITHUB_USER: ${GITHUB_USER}
         GITHUB_PAT: ${GITHUB_PAT}
     ports:
-      - "8083:8083"
-      - "8084:8084"
+      - "8080:8080"
     environment:
-      POSTGRES_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@baas-account_db:5432/${POSTGRES_DB}
-      POSTGRES_DSN: host=baas-account_db user=${POSTGRES_USER} password=${POSTGRES_PASSWORD} dbname=${POSTGRES_DB} port=5432 sslmode=disable TimeZone=Australia/Sydney
+      POSTGRES_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      POSTGRES_DSN: host=db user=${POSTGRES_USER} password=${POSTGRES_PASSWORD} dbname=${POSTGRES_DB} port=5432 sslmode=disable TimeZone=Australia/Sydney
       JAEGER_AGENT_HOST: jaeger
       JAEGER_AGENT_PORT: 6831
     networks:
-      - postgres
-      - baas-account_tracing
-    depends_on:
-      - db
+      - baas-{{ .ClusterName }}_db
+      - baas-{{ .ClusterName }}_telemetry
     restart: unless-stopped
 
 networks:
-  postgres:
-    driver: bridge
-  baas-account_tracing:
+  baas-{{ .ClusterName }}_db:
     external: true
+  baas-{{ .ClusterName }}_telemetry:
+    external: true
+`,
+	"dockerfile.tmpl": `FROM golang AS build
+
+WORKDIR /app
+
+COPY . . 
+
+ARG GITHUB_USER
+ARG GITHUB_PAT
+RUN echo "machine github.com login ${GITHUB_USER} password ${GITHUB_PAT}" > ~/.netrc
+RUN chmod 0600 ~/.netrc 
+RUN GOPRIVATE='github.com/12kmps/*' go mod tidy -compat=1.17
+RUN GOPRIVATE='github.com/12kmps/*' go mod download 
+RUN CGO_ENABLED=0 go build -o app .
+
+##
+## Deploy
+##
+FROM alpine:latest  
+
+WORKDIR /root/
+
+COPY --from=build /app/app ./
+
+EXPOSE 8081
+EXPOSE 8082
+
+CMD ["./app"]
 `,
 	"endpoint.tmpl": `type EndpointSet struct {
 {{range .Ops}}

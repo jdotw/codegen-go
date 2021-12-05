@@ -39,6 +39,7 @@ var (
 	flagPackageName    string
 	flagGenerate       string
 	flagOutputFile     string
+	flagClusterName    string
 	flagIncludeTags    string
 	flagExcludeTags    string
 	flagTemplatesDir   string
@@ -63,6 +64,7 @@ type configuration struct {
 func main() {
 
 	flag.StringVar(&flagPackageName, "package", "", "The package name for generated code")
+	flag.StringVar(&flagClusterName, "cluster", "", "The API cluster name for generated code")
 	flag.StringVar(&flagGenerate, "generate", "types,client",
 		`Comma-separated list of code to generate; valid options: "types", "client", "bootstrap", "service", "repository", "endpoint", "transport"`)
 	flag.StringVar(&flagOutputFile, "o", "", "Where to output generated code, stdout is default")
@@ -94,6 +96,11 @@ func main() {
 
 	if len(flagOutputFile) == 0 {
 		fmt.Println("Please specify an output path with the -o option")
+		os.Exit(1)
+	}
+
+	if len(flagClusterName) == 0 {
+		fmt.Println("Please specify a cluster name with the -cluster option")
 		os.Exit(1)
 	}
 
@@ -245,6 +252,22 @@ func main() {
 		if err != nil {
 			errExit("error writing generated main code to file: %s", err)
 		}
+
+		docker, err := codegen.GenerateDocker(flag.Arg(0), projectName, flagClusterName, opts)
+		if err != nil {
+			errExit("error generating docker code: %s\n", err)
+		}
+
+		err = ioutil.WriteFile(cfg.OutputFile+"/docker-compose.yaml", []byte(docker.DockerCompose), 0644)
+		if err != nil {
+			errExit("error writing generated main code to file: %s", err)
+		}
+
+		err = ioutil.WriteFile(cfg.OutputFile+"/Dockerfile", []byte(docker.Dockerfile), 0644)
+		if err != nil {
+			errExit("error writing generated main code to file: %s", err)
+		}
+
 	}
 }
 

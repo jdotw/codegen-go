@@ -339,6 +339,27 @@ func GenerateProject(swaggerFile string, projectName string, opts Options) (*str
 	return &mainOut, nil
 }
 
+func GenerateDocker(swaggerFile string, projectName string, clusterName string, opts Options) (*DockerOutputs, error) {
+	// This creates the golang templates text package
+	TemplateFunctions["opts"] = func() Options { return opts }
+	t := template.New("oapi-codegen").Funcs(TemplateFunctions)
+	// This parses all of our own template files into the template object
+	// above
+	t, err := templates.Parse(t)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing oapi-codegen templates: %w", err)
+	}
+
+	out, err := GenerateDockerDefinitions(t, DockerInputs{
+		ProjectName: projectName,
+		ClusterName: clusterName,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("error generating main: %w", err)
+	}
+	return out, nil
+}
+
 func renderString(opts Options, t *template.Template, packageName string, strings []string, mutableFile bool) (string, error) {
 	var buf bytes.Buffer
 	w := bufio.NewWriter(&buf)
@@ -390,6 +411,31 @@ func GenerateMainDefinitions(t *template.Template, mainInputs MainTemplateInputs
 
 func GenerateProjectDefinitions(t *template.Template, projectName string) (string, error) {
 	return GenerateTemplates([]string{"go.mod.tmpl"}, t, projectName)
+}
+
+type DockerInputs struct {
+	ProjectName string
+	ClusterName string
+}
+
+type DockerOutputs struct {
+	Dockerfile    string
+	DockerCompose string
+}
+
+func GenerateDockerDefinitions(t *template.Template, in DockerInputs) (*DockerOutputs, error) {
+	dockerfile, err := GenerateTemplates([]string{"dockerfile.tmpl"}, t, in)
+	if err != nil {
+		return nil, err
+	}
+	dockercompose, err := GenerateTemplates([]string{"docker-compose.yaml.tmpl"}, t, in)
+	if err != nil {
+		return nil, err
+	}
+	return &DockerOutputs{
+		Dockerfile:    dockerfile,
+		DockerCompose: dockercompose,
+	}, nil
 }
 
 func GenerateTypeDefinitions(t *template.Template, swagger *openapi3.T, ops []OperationDefinition, excludeSchemas []string) (string, error) {
