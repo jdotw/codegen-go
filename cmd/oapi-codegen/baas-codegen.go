@@ -268,6 +268,16 @@ func main() {
 			errExit("error writing generated main code to file: %s", err)
 		}
 
+		gitignore, err := codegen.GenerateGitIgnore(flag.Arg(0), projectName, opts)
+		if err != nil {
+			errExit("error generating gitignore code: %s\n", err)
+		}
+
+		err = ioutil.WriteFile(cfg.OutputFile+"/.gitignore", []byte(*gitignore), 0644)
+		if err != nil {
+			errExit("error writing generated gitignore to file: %s", err)
+		}
+
 	}
 }
 

@@ -355,9 +355,27 @@ func GenerateDocker(swaggerFile string, projectName string, clusterName string, 
 		ClusterName: clusterName,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("error generating main: %w", err)
+		return nil, fmt.Errorf("error generating docker: %w", err)
 	}
 	return out, nil
+}
+
+func GenerateGitIgnore(swaggerFile string, projectName string, opts Options) (*string, error) {
+	// This creates the golang templates text package
+	TemplateFunctions["opts"] = func() Options { return opts }
+	t := template.New("oapi-codegen").Funcs(TemplateFunctions)
+	// This parses all of our own template files into the template object
+	// above
+	t, err := templates.Parse(t)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing oapi-codegen templates: %w", err)
+	}
+
+	out, err := GenerateGitIgnoreDefinitions(t, projectName)
+	if err != nil {
+		return nil, fmt.Errorf("error generating gitignore: %w", err)
+	}
+	return &out, nil
 }
 
 func renderString(opts Options, t *template.Template, packageName string, strings []string, mutableFile bool) (string, error) {
@@ -411,6 +429,10 @@ func GenerateMainDefinitions(t *template.Template, mainInputs MainTemplateInputs
 
 func GenerateProjectDefinitions(t *template.Template, projectName string) (string, error) {
 	return GenerateTemplates([]string{"go.mod.tmpl"}, t, projectName)
+}
+
+func GenerateGitIgnoreDefinitions(t *template.Template, projectName string) (string, error) {
+	return GenerateTemplates([]string{"gitignore.tmpl"}, t, projectName)
 }
 
 type DockerInputs struct {

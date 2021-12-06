@@ -595,6 +595,7 @@ func make{{$opid}}Endpoint(s Service, logger log.Factory, tracer opentracing.Tra
 {{end}}
 
 `,
+	"gitignore.tmpl": `.env`,
 	"go.mod.tmpl": `module github.com/12kmps/baas-{{.}}
 
 go 1.17
