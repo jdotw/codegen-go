@@ -3,6 +3,7 @@
 func AddHTTPRoutes(r *mux.Router, endpoints EndpointSet, logger log.Factory, tracer opentracing.Tracer) {
 	options := []httptransport.ServerOption{
 		httptransport.ServerErrorEncoder(errorEncoder),
+    httptransport.ServerBefore(jwt.HTTPAuthorizationToContext()),
 	}
 
 {{range .Ops}}

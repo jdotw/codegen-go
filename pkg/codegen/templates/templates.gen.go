@@ -551,11 +551,14 @@ CMD ["./app"]
   {{.OperationId}}Endpoint    endpoint.Endpoint{{end}}
 }
 
-func NewEndpointSet(s Service, logger log.Factory, tracer opentracing.Tracer) EndpointSet { {{range .Ops}} 
+func NewEndpointSet(s Service, logger log.Factory, tracer opentracing.Tracer) EndpointSet { 
+	auth := jwt.NewAuthenticator(logger, tracer)
+{{range .Ops}} 
   var {{lcFirst .OperationId}}Endpoint endpoint.Endpoint
 	{
 		{{lcFirst .OperationId}}Endpoint = make{{.OperationId}}Endpoint(s, logger, tracer)
-		{{lcFirst .OperationId}}Endpoint = kittracing.TraceServer(tracer, "{{.OperationId}}")({{lcFirst .OperationId}}Endpoint)
+		{{lcFirst .OperationId}}Endpoint = kittracing.TraceServer(tracer, "{{.OperationId}}Endpoint")({{lcFirst .OperationId}}Endpoint)
+		{{lcFirst .OperationId}}Endpoint = auth.NewMiddleware()({{lcFirst .OperationId}}Endpoint)
 	}{{end}}
 	return EndpointSet{ {{range .Ops}}
 		{{.OperationId}}Endpoint: {{lcFirst .OperationId}}Endpoint,{{end}}
@@ -637,6 +640,7 @@ import (
 
   "github.com/12kmps/baas/log"
 	"github.com/12kmps/baas/tracing"
+  "github.com/12kmps/baas/authn/jwt"
 	"go.uber.org/zap"
 	"github.com/go-kit/kit/endpoint"
 	kittracing "github.com/go-kit/kit/tracing/opentracing"
@@ -942,6 +946,7 @@ func NewService(repository Repository, logger log.Factory, tracer opentracing.Tr
 func AddHTTPRoutes(r *mux.Router, endpoints EndpointSet, logger log.Factory, tracer opentracing.Tracer) {
 	options := []httptransport.ServerOption{
 		httptransport.ServerErrorEncoder(errorEncoder),
+    httptransport.ServerBefore(jwt.HTTPAuthorizationToContext()),
 	}
 
 {{range .Ops}}

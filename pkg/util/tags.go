@@ -1,6 +1,10 @@
 package util
 
-import "github.com/getkin/kin-openapi/openapi3"
+import (
+	"sort"
+
+	"github.com/getkin/kin-openapi/openapi3"
+)
 
 func appendTagsInOperation(op *openapi3.Operation, m map[string]bool) map[string]bool {
 	if op == nil {
@@ -24,5 +28,6 @@ func UniquePathTags(swagger *openapi3.T) []string {
 	for t, _ := range m {
 		u = append(u, t)
 	}
+	sort.Strings(u)
 	return u
 }

@@ -17,6 +17,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 	"text/template"
 
@@ -101,6 +102,7 @@ func uniqueResponseBodyTypes(ops []OperationDefinition) []string {
 	for k, _ := range bodyTypesByType {
 		uniqueResponseBodyTypes = append(uniqueResponseBodyTypes, k)
 	}
+	sort.Strings(uniqueResponseBodyTypes)
 	return uniqueResponseBodyTypes
 }
 
