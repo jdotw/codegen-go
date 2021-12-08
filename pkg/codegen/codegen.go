@@ -52,13 +52,14 @@ type Options struct {
 }
 
 type Code struct {
-	Types          string
-	Client         string
-	Service        string
-	Transports     string
-	Endpoints      string
-	Repository     string
-	RepositoryGORM string
+	Types            string
+	Client           string
+	Service          string
+	Transports       string
+	Endpoints        string
+	EndpointPolicies string
+	Repository       string
+	RepositoryGORM   string
 }
 
 // goImport represents a go package to be imported in the generated code
@@ -204,10 +205,15 @@ func Generate(swaggerFile string, projectName string, packageName string, tag st
 	}
 
 	var endpointsOut string
+	var endpointPoliciesOut string
 	if opts.GenerateEndpoints {
 		endpointsOut, err = GenerateEndpoints(t, *ops)
 		if err != nil {
 			return nil, fmt.Errorf("error generating endpoints: %w", err)
+		}
+		endpointPoliciesOut, err = GenerateEndpointPolicies(t, *ops)
+		if err != nil {
+			return nil, fmt.Errorf("error generating endpoint policies: %w", err)
 		}
 	}
 
@@ -251,13 +257,14 @@ func Generate(swaggerFile string, projectName string, packageName string, tag st
 		repositoryGORM, err = renderString(opts, t, packageName, []string{repositoryGORMOut}, true)
 	}
 	c := Code{
-		Types:          types,
-		Client:         client,
-		Transports:     transports,
-		Endpoints:      endpoints,
-		Repository:     repository,
-		RepositoryGORM: repositoryGORM,
-		Service:        service,
+		Types:            types,
+		Client:           client,
+		Transports:       transports,
+		Endpoints:        endpoints,
+		EndpointPolicies: endpointPoliciesOut,
+		Repository:       repository,
+		RepositoryGORM:   repositoryGORM,
+		Service:          service,
 	}
 	return &c, nil
 }

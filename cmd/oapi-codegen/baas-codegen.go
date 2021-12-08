@@ -183,6 +183,10 @@ func main() {
 		if err != nil && !os.IsExist(err) {
 			errExit("error creating tag-specific output path: %s", err)
 		}
+		err = os.Mkdir(tagPath+"/policies", 0755)
+		if err != nil && !os.IsExist(err) {
+			errExit("error creating tag-specific policies output path: %s", err)
+		}
 
 		if opts.GenerateTypes {
 			err = ioutil.WriteFile(tagPath+"/types.go", []byte(code.Types), 0644)
@@ -214,6 +218,10 @@ func main() {
 
 		if opts.GenerateEndpoints {
 			err = ioutil.WriteFile(tagPath+"/endpoint.go", []byte(code.Endpoints), 0644)
+			if err != nil {
+				errExit("error writing generated endpoint code to file: %s", err)
+			}
+			err = ioutil.WriteFile(tagPath+"/policies/endpoint.rego", []byte(code.EndpointPolicies), 0644)
 			if err != nil {
 				errExit("error writing generated endpoint code to file: %s", err)
 			}

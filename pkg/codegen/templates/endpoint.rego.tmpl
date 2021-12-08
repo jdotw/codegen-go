@@ -1,0 +1,5 @@
+package endpoint.authz
+
+{{range .Ops}} 
+default {{snakeCase .OperationId}} = true
+{{end}}

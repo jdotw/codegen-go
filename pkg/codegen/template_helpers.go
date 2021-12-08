@@ -379,6 +379,10 @@ func toKebabCase(s string) string {
 	return strcase.ToKebab(s)
 }
 
+func toSnakeCase(s string) string {
+	return strcase.ToSnake(s)
+}
+
 // This function map is passed to the template engine, and we can call each
 // function here by keyName from the template code.
 var TemplateFunctions = template.FuncMap{
@@ -394,6 +398,7 @@ var TemplateFunctions = template.FuncMap{
 	"ucFirst":                          UppercaseFirstCharacter,
 	"camelCase":                        ToCamelCase,
 	"kebabCase":                        toKebabCase,
+	"snakeCase":                        toSnakeCase,
 	"genResponsePayload":               genResponsePayload,
 	"genResponseTypeName":              genResponseTypeName,
 	"genResponseUnmarshal":             genResponseUnmarshal,

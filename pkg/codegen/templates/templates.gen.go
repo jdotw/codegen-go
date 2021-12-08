@@ -546,19 +546,29 @@ EXPOSE 8082
 
 CMD ["./app"]
 `,
+	"endpoint.rego.tmpl": `package endpoint.authz
+
+{{range .Ops}} 
+default {{snakeCase .OperationId}} = true
+{{end}}`,
 	"endpoint.tmpl": `type EndpointSet struct {
 {{range .Ops}}
   {{.OperationId}}Endpoint    endpoint.Endpoint{{end}}
 }
 
+//go:embed policies/endpoint.rego
+var endpointPolicy string
+
 func NewEndpointSet(s Service, logger log.Factory, tracer opentracing.Tracer) EndpointSet { 
-	auth := jwt.NewAuthenticator(logger, tracer)
+	authn := jwt.NewAuthenticator(logger, tracer)
+	authz := opa.NewAuthorizor(logger, tracer)
 {{range .Ops}} 
   var {{lcFirst .OperationId}}Endpoint endpoint.Endpoint
 	{
 		{{lcFirst .OperationId}}Endpoint = make{{.OperationId}}Endpoint(s, logger, tracer)
+		{{lcFirst .OperationId}}Endpoint = authz.NewMiddleware(endpointPolicy, "data.endpoint.authz.{{snakeCase .OperationId}}")({{lcFirst .OperationId}}Endpoint)
+		{{lcFirst .OperationId}}Endpoint = authn.NewMiddleware()({{lcFirst .OperationId}}Endpoint)
 		{{lcFirst .OperationId}}Endpoint = kittracing.TraceServer(tracer, "{{.OperationId}}Endpoint")({{lcFirst .OperationId}}Endpoint)
-		{{lcFirst .OperationId}}Endpoint = auth.NewMiddleware()({{lcFirst .OperationId}}Endpoint)
 	}{{end}}
 	return EndpointSet{ {{range .Ops}}
 		{{.OperationId}}Endpoint: {{lcFirst .OperationId}}Endpoint,{{end}}
@@ -634,6 +644,7 @@ import (
 	"path"
 	"strings"
 	"time"
+  _ "embed"
 
 	"github.com/12kmps/codegen-go/pkg/runtime"
 	openapi_types "github.com/12kmps/codegen-go/pkg/types"

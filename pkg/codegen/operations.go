@@ -698,6 +698,10 @@ func GenerateEndpoints(t *template.Template, ops TagOperations) (string, error) 
 	return GenerateTemplates([]string{"endpoint.tmpl"}, t, ops)
 }
 
+func GenerateEndpointPolicies(t *template.Template, ops TagOperations) (string, error) {
+	return GenerateTemplates([]string{"endpoint.rego.tmpl"}, t, ops)
+}
+
 func GenerateRepository(t *template.Template, ops TagOperations) (string, error) {
 	return GenerateTemplates([]string{"repository.tmpl"}, t, ops)
 }
