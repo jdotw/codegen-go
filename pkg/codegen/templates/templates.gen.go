@@ -569,7 +569,8 @@ CMD ["./app"]
 {{range .Ops}} 
 default {{snakeCase .OperationId}} = true
 {{end}}`,
-	"endpoint.tmpl": `type EndpointSet struct {
+	"endpoint.tmpl": `{{ $tag := .Tag }}
+type EndpointSet struct {
 {{range .Ops}}
   {{.OperationId}}Endpoint    endpoint.Endpoint{{end}}
 }
@@ -584,7 +585,7 @@ func NewEndpointSet(s Service, logger log.Factory, tracer opentracing.Tracer) En
   var {{lcFirst .OperationId}}Endpoint endpoint.Endpoint
 	{
 		{{lcFirst .OperationId}}Endpoint = make{{.OperationId}}Endpoint(s, logger, tracer)
-		{{lcFirst .OperationId}}Endpoint = authz.NewMiddleware(endpointPolicy, "data.endpoint.authz.{{snakeCase .OperationId}}")({{lcFirst .OperationId}}Endpoint)
+		{{lcFirst .OperationId}}Endpoint = authz.NewMiddleware(endpointPolicy, "data.{{toPackageName $tag}}.endpoint.authz.{{snakeCase .OperationId}}")({{lcFirst .OperationId}}Endpoint)
 		{{lcFirst .OperationId}}Endpoint = authn.NewMiddleware()({{lcFirst .OperationId}}Endpoint)
 		{{lcFirst .OperationId}}Endpoint = kittracing.TraceServer(tracer, "{{.OperationId}}Endpoint")({{lcFirst .OperationId}}Endpoint)
 	}{{end}}
