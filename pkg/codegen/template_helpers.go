@@ -383,6 +383,10 @@ func toSnakeCase(s string) string {
 	return strcase.ToSnake(s)
 }
 
+func toPackageName(s string) string {
+	return strings.ToLower(s)
+}
+
 // This function map is passed to the template engine, and we can call each
 // function here by keyName from the template code.
 var TemplateFunctions = template.FuncMap{
@@ -415,4 +419,5 @@ var TemplateFunctions = template.FuncMap{
 	"isOther":                          isOther,
 	"uniqueResponseBodyTypes":          uniqueResponseBodyTypes,
 	"isBoolResponseType":               isBoolResponseType,
+	"toPackageName":                    toPackageName,
 }

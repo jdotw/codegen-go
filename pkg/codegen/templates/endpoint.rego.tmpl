@@ -1,4 +1,4 @@
-package endpoint.authz
+package {{toPackageName .Tag}}.endpoint.authz
 
 {{range .Ops}} 
 default {{snakeCase .OperationId}} = true

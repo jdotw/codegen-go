@@ -261,7 +261,7 @@ func main() {
 			errExit("error writing generated main code to file: %s", err)
 		}
 
-		docker, err := codegen.GenerateDocker(flag.Arg(0), projectName, flagClusterName, opts)
+		docker, err := codegen.GenerateDocker(flag.Arg(0), projectName, flagClusterName, tags, opts)
 		if err != nil {
 			errExit("error generating docker code: %s\n", err)
 		}

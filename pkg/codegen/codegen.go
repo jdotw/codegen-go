@@ -346,7 +346,7 @@ func GenerateProject(swaggerFile string, projectName string, opts Options) (*str
 	return &mainOut, nil
 }
 
-func GenerateDocker(swaggerFile string, projectName string, clusterName string, opts Options) (*DockerOutputs, error) {
+func GenerateDocker(swaggerFile string, projectName string, clusterName string, tags []string, opts Options) (*DockerOutputs, error) {
 	// This creates the golang templates text package
 	TemplateFunctions["opts"] = func() Options { return opts }
 	t := template.New("oapi-codegen").Funcs(TemplateFunctions)
@@ -360,6 +360,7 @@ func GenerateDocker(swaggerFile string, projectName string, clusterName string, 
 	out, err := GenerateDockerDefinitions(t, DockerInputs{
 		ProjectName: projectName,
 		ClusterName: clusterName,
+		Tags:        tags,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("error generating docker: %w", err)
@@ -445,6 +446,7 @@ func GenerateGitIgnoreDefinitions(t *template.Template, projectName string) (str
 type DockerInputs struct {
 	ProjectName string
 	ClusterName string
+	Tags        []string
 }
 
 type DockerOutputs struct {
