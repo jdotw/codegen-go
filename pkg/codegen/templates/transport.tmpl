@@ -2,7 +2,7 @@
 
 func AddHTTPRoutes(r *mux.Router, endpoints EndpointSet, logger log.Factory, tracer opentracing.Tracer) {
 	options := []httptransport.ServerOption{
-		httptransport.ServerErrorEncoder(errorEncoder),
+		httptransport.ServerErrorEncoder(transport.HTTPErrorEncoder),
     httptransport.ServerBefore(jwt.HTTPAuthorizationToContext()),
 	}
 
@@ -13,7 +13,7 @@ func AddHTTPRoutes(r *mux.Router, endpoints EndpointSet, logger log.Factory, tra
 	{{lcFirst .OperationId}}Handler := httptransport.NewServer(
 		endpoints.{{$opid}}Endpoint,
 		decode{{$opid}}EndpointRequest,
-		encodeResponse,
+		transport.HTTPEncodeResponse,
 		options...,
 	)
 	r.Handle("{{.Path}}", {{lcFirst $opid}}Handler).Methods("{{.Method}}")
@@ -43,23 +43,3 @@ func decode{{$opid}}EndpointRequest(_ context.Context, r *http.Request) (interfa
 }
 {{end}}
 
-// Response Encoder (Generic)
-
-func encodeResponse(_ context.Context, w http.ResponseWriter, response interface{}) error {
-	return json.NewEncoder(w).Encode(response)
-}
-
-// Error Encoder
-
-type errorResponse struct { 
-  {{ genErrorStringVar }}
-}
-
-func errorEncoder(ctx context.Context, err error, w http.ResponseWriter) {
-	if err == recorderrors.ErrNotFound {
-		w.WriteHeader(http.StatusNotFound)
-	} else {
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(errorResponse{Error: err.Error()})
-	}
-}

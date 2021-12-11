@@ -585,7 +585,7 @@ func NewEndpointSet(s Service, logger log.Factory, tracer opentracing.Tracer) En
   var {{lcFirst .OperationId}}Endpoint endpoint.Endpoint
 	{
 		{{lcFirst .OperationId}}Endpoint = make{{.OperationId}}Endpoint(s, logger, tracer)
-		{{lcFirst .OperationId}}Endpoint = authz.NewMiddleware(endpointPolicy, "data.{{toPackageName $tag}}.endpoint.authz.{{snakeCase .OperationId}}")({{lcFirst .OperationId}}Endpoint)
+		{{lcFirst .OperationId}}Endpoint = authz.NewInProcessMiddleware(endpointPolicy, "data.{{toPackageName $tag}}.endpoint.authz.{{snakeCase .OperationId}}")({{lcFirst .OperationId}}Endpoint)
 		{{lcFirst .OperationId}}Endpoint = authn.NewMiddleware()({{lcFirst .OperationId}}Endpoint)
 		{{lcFirst .OperationId}}Endpoint = kittracing.TraceServer(tracer, "{{.OperationId}}Endpoint")({{lcFirst .OperationId}}Endpoint)
 	}{{end}}
@@ -671,6 +671,7 @@ import (
   "github.com/12kmps/baas/log"
 	"github.com/12kmps/baas/tracing"
   "github.com/12kmps/baas/authn/jwt"
+	"github.com/12kmps/baas/transport"
 	"go.uber.org/zap"
 	"github.com/go-kit/kit/endpoint"
 	kittracing "github.com/go-kit/kit/tracing/opentracing"
@@ -681,7 +682,6 @@ import (
  	httptransport "github.com/go-kit/kit/transport/http"
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-
 
 	{{- range .ExternalImports}}
 	{{ . }}
@@ -975,7 +975,7 @@ func NewService(repository Repository, logger log.Factory, tracer opentracing.Tr
 
 func AddHTTPRoutes(r *mux.Router, endpoints EndpointSet, logger log.Factory, tracer opentracing.Tracer) {
 	options := []httptransport.ServerOption{
-		httptransport.ServerErrorEncoder(errorEncoder),
+		httptransport.ServerErrorEncoder(transport.HTTPErrorEncoder),
     httptransport.ServerBefore(jwt.HTTPAuthorizationToContext()),
 	}
 
@@ -986,7 +986,7 @@ func AddHTTPRoutes(r *mux.Router, endpoints EndpointSet, logger log.Factory, tra
 	{{lcFirst .OperationId}}Handler := httptransport.NewServer(
 		endpoints.{{$opid}}Endpoint,
 		decode{{$opid}}EndpointRequest,
-		encodeResponse,
+		transport.HTTPEncodeResponse,
 		options...,
 	)
 	r.Handle("{{.Path}}", {{lcFirst $opid}}Handler).Methods("{{.Method}}")
@@ -1016,26 +1016,6 @@ func decode{{$opid}}EndpointRequest(_ context.Context, r *http.Request) (interfa
 }
 {{end}}
 
-// Response Encoder (Generic)
-
-func encodeResponse(_ context.Context, w http.ResponseWriter, response interface{}) error {
-	return json.NewEncoder(w).Encode(response)
-}
-
-// Error Encoder
-
-type errorResponse struct { 
-  {{ genErrorStringVar }}
-}
-
-func errorEncoder(ctx context.Context, err error, w http.ResponseWriter) {
-	if err == recorderrors.ErrNotFound {
-		w.WriteHeader(http.StatusNotFound)
-	} else {
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(errorResponse{Error: err.Error()})
-	}
-}
 `,
 	"typedef.tmpl": `{{range .Types}}
 {{ with .Schema.Description }}{{ . }}{{ else }}// {{.TypeName}} defines model for {{.JsonName}}.{{ end }}

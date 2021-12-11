@@ -31,6 +31,7 @@ import (
   "github.com/12kmps/baas/log"
 	"github.com/12kmps/baas/tracing"
   "github.com/12kmps/baas/authn/jwt"
+	"github.com/12kmps/baas/transport"
 	"go.uber.org/zap"
 	"github.com/go-kit/kit/endpoint"
 	kittracing "github.com/go-kit/kit/tracing/opentracing"
@@ -41,7 +42,6 @@ import (
  	httptransport "github.com/go-kit/kit/transport/http"
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-
 
 	{{- range .ExternalImports}}
 	{{ . }}
