@@ -37,6 +37,7 @@ func errExit(format string, args ...interface{}) {
 
 var (
 	flagPackageName    string
+	flagServiceName    string
 	flagGenerate       string
 	flagOutputFile     string
 	flagClusterName    string
@@ -65,6 +66,7 @@ func main() {
 
 	flag.StringVar(&flagPackageName, "package", "", "The package name for generated code")
 	flag.StringVar(&flagClusterName, "cluster", "", "The API cluster name for generated code")
+	flag.StringVar(&flagServiceName, "service", "", "The service name (used as the project/module name)")
 	flag.StringVar(&flagGenerate, "generate", "types,client",
 		`Comma-separated list of code to generate; valid options: "types", "client", "bootstrap", "service", "repository", "endpoint", "transport"`)
 	flag.StringVar(&flagOutputFile, "o", "", "Where to output generated code, stdout is default")
@@ -152,7 +154,12 @@ func main() {
 	baseName := filepath.Base(path)
 	// Split the base name on '.' to get the first part of the file.
 	nameParts := strings.Split(baseName, ".")
-	projectName := strcase.ToKebab(nameParts[0])
+	var projectName string
+	if len(flagServiceName) > 0 {
+		projectName = flagServiceName
+	} else {
+		projectName = strcase.ToKebab(nameParts[0])
+	}
 
 	tags := util.UniquePathTags(swagger)
 	for _, t := range tags {
