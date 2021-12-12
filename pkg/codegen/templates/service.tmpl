@@ -7,7 +7,7 @@ type Service interface {
 {{$pathParams := .PathParams -}}
 {{$opid := .OperationId -}}
 {{$successResponse := getSuccessResponseTypeDefinition .}}
-{{$opid}}(ctx context.Context{{range .PathParams -}}, {{$paramName := .ParamName}}{{$paramName}} string{{end}}{{range .Bodies}}, {{lcFirst .Schema.GoType}} *{{.Schema.GoType}}{{end}}) (*{{$successResponse.Schema.GoType}}, error){{end}}
+{{$opid}}(ctx context.Context{{genParamArgs .PathParams}}{{range .Bodies}}, {{lcFirst .Schema.GoType}} *{{.Schema.GoType}}{{end}}) (*{{$successResponse.Schema.GoType}}, error){{end}}
 }
 
 type service struct {
@@ -30,8 +30,8 @@ func NewService(repository Repository, logger log.Factory, tracer opentracing.Tr
 {{$opid := .OperationId -}}
 {{$successResponse := getSuccessResponseTypeDefinition .}}
 {{$tag := .Tag -}}
-  func (f *service) {{$opid}}(ctx context.Context{{range .PathParams -}}, {{.ParamName}} string{{end}}{{range .Bodies}}, {{lcFirst .Schema.GoType}} *{{.Schema.GoType}}{{end}}) (*{{$successResponse.Schema.GoType}}, error) {
-    v, err := f.repository.{{$opid}}(ctx{{range .PathParams -}}, {{.ParamName}}{{end}}{{range .Bodies}}, {{lcFirst .Schema.GoType}}{{end}})
+  func (f *service) {{$opid}}(ctx context.Context{{genParamArgs .PathParams}}{{range .Bodies}}, {{lcFirst .Schema.GoType}} *{{.Schema.GoType}}{{end}}) (*{{$successResponse.Schema.GoType}}, error) {
+    v, err := f.repository.{{$opid}}(ctx{{genParamNames .PathParams}}{{range .Bodies}}, {{lcFirst .Schema.GoType}}{{end}})
     return v, err
   }
 {{end}}

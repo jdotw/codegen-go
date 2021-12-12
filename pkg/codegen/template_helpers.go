@@ -47,7 +47,8 @@ func genParamArgs(params []ParameterDefinition) string {
 	parts := make([]string, len(params))
 	for i, p := range params {
 		paramName := p.GoVariableName()
-		parts[i] = fmt.Sprintf("%s %s", paramName, p.TypeDef())
+		// parts[i] = fmt.Sprintf("%s %s", paramName, p.TypeDef())
+		parts[i] = fmt.Sprintf("%s string", paramName)
 	}
 	return ", " + strings.Join(parts, ", ")
 }

@@ -475,28 +475,28 @@ func GenerateTypeDefinitions(t *template.Template, swagger *openapi3.T, ops []Op
 		return "", fmt.Errorf("error generating Go types for component schemas: %w", err)
 	}
 
-	paramTypes, err := GenerateTypesForParameters(t, swagger.Components.Parameters)
-	if err != nil {
-		return "", fmt.Errorf("error generating Go types for component parameters: %w", err)
-	}
-	allTypes := append(schemaTypes, paramTypes...)
+	// paramTypes, err := GenerateTypesForParameters(t, swagger.Components.Parameters)
+	// if err != nil {
+	// 	return "", fmt.Errorf("error generating Go types for component parameters: %w", err)
+	// }
+	// allTypes := append(schemaTypes, paramTypes...)
 
 	responseTypes, err := GenerateTypesForResponses(t, swagger.Components.Responses)
 	if err != nil {
 		return "", fmt.Errorf("error generating Go types for component responses: %w", err)
 	}
-	allTypes = append(allTypes, responseTypes...)
+	allTypes := append(schemaTypes, responseTypes...)
 
-	bodyTypes, err := GenerateTypesForRequestBodies(t, swagger.Components.RequestBodies)
-	if err != nil {
-		return "", fmt.Errorf("error generating Go types for component request bodies: %w", err)
-	}
-	allTypes = append(allTypes, bodyTypes...)
+	// bodyTypes, err := GenerateTypesForRequestBodies(t, swagger.Components.RequestBodies)
+	// if err != nil {
+	// 	return "", fmt.Errorf("error generating Go types for component request bodies: %w", err)
+	// }
+	// allTypes = append(allTypes, bodyTypes...)
 
-	paramTypesOut, err := GenerateTypesForOperations(t, ops)
-	if err != nil {
-		return "", fmt.Errorf("error generating Go types for component request bodies: %w", err)
-	}
+	// paramTypesOut, err := GenerateTypesForOperations(t, ops)
+	// if err != nil {
+	// 	return "", fmt.Errorf("error generating Go types for component request bodies: %w", err)
+	// }
 
 	enumsOut, err := GenerateEnums(t, allTypes)
 	if err != nil {
@@ -513,7 +513,7 @@ func GenerateTypeDefinitions(t *template.Template, swagger *openapi3.T, ops []Op
 		return "", fmt.Errorf("error generating allOf boilerplate: %w", err)
 	}
 
-	typeDefinitions := strings.Join([]string{enumsOut, typesOut, paramTypesOut, allOfBoilerplate}, "")
+	typeDefinitions := strings.Join([]string{enumsOut, typesOut, allOfBoilerplate}, "")
 	return typeDefinitions, nil
 }
 

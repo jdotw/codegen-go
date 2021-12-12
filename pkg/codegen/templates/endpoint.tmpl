@@ -32,11 +32,11 @@ func NewEndpointSet(s Service, logger log.Factory, tracer opentracing.Tracer) En
 
 type {{$opid}}EndpointRequest struct {
   {{range .PathParams -}}
-  {{camelCase .ParamName}} string
+  {{.GoName}} string
   {{end}}
   {{if .HasBody}}
   {{range .Bodies}}
-  {{.Schema.RefType}} *{{.Schema.GoType}}
+  {{.Schema.GoType}} *{{.Schema.GoType}}
   {{end}}
   {{end}}
 }
