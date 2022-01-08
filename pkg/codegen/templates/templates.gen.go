@@ -663,6 +663,7 @@ import (
 	"path"
 	"strings"
 	"time"
+	"os"
   _ "embed"
 
 	"github.com/12kmps/codegen-go/pkg/runtime"
@@ -811,10 +812,13 @@ func GetSwagger() (swagger *openapi3.T, err error) {
 	// Start Transports
 	go func() error {
 		// HTTP
-		httpHost := ""
-		httpPort := 8080
-		httpAddr := httpHost + ":" + strconv.Itoa(httpPort)
-		logger.Bg().Info("Listening", zap.String("transport", "http"), zap.String("host", httpHost), zap.Int("port", httpPort), zap.String("addr", httpAddr))
+		httpHost := os.Getenv("HTTP_LISTEN_HOST")
+		httpPort := os.Getenv("HTTP_LISTEN_PORT")
+    if len(httpPort) == 0 {
+      httpPort = "8080"
+    }
+		httpAddr := httpHost + ":" + httpPort
+		logger.Bg().Info("Listening", zap.String("transport", "http"), zap.String("host", httpHost), zap.String("port", httpPort), zap.String("addr", httpAddr))
 		err := http.ListenAndServe(httpAddr, m)
 		logger.Bg().Fatal("Exit", zap.Error(err))
 		return err
@@ -872,7 +876,6 @@ func NewGormRepository(ctx context.Context, connString string, logger log.Factor
   func (p *repository) {{$opid}}(ctx context.Context{{genParamArgs .PathParams}}{{range .Bodies}}, {{lcFirst .Schema.GoType}} *{{.Schema.GoType}}{{end}}) (*{{$successResponse.Schema.GoType}}, error) {
     {{if isCreate .}}
     var tx *gorm.DB
-	  var v {{$successResponse.Schema.GoType}}
     {{$opBodies := .Bodies}}
     {{range $opBodies}}
     tx = p.db.WithContext(ctx).Create(&{{lcFirst .Schema.GoType}})
@@ -880,10 +883,7 @@ func NewGormRepository(ctx context.Context, connString string, logger log.Factor
       return nil, tx.Error
     }
     {{end}}
-    {{if isBoolResponseType $successResponse}}
-    v = true
-    {{end}}
-    return &v, nil
+    return {{$successResponse.Schema.GoVariableName}}, nil
     {{end}}
     {{if isGet .}}
     // TODO: Check the .First query as codegen is not able

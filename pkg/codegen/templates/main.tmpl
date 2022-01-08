@@ -33,10 +33,13 @@ func main() {
 	// Start Transports
 	go func() error {
 		// HTTP
-		httpHost := ""
-		httpPort := 8080
-		httpAddr := httpHost + ":" + strconv.Itoa(httpPort)
-		logger.Bg().Info("Listening", zap.String("transport", "http"), zap.String("host", httpHost), zap.Int("port", httpPort), zap.String("addr", httpAddr))
+		httpHost := os.Getenv("HTTP_LISTEN_HOST")
+		httpPort := os.Getenv("HTTP_LISTEN_PORT")
+    if len(httpPort) == 0 {
+      httpPort = "8080"
+    }
+		httpAddr := httpHost + ":" + httpPort
+		logger.Bg().Info("Listening", zap.String("transport", "http"), zap.String("host", httpHost), zap.String("port", httpPort), zap.String("addr", httpAddr))
 		err := http.ListenAndServe(httpAddr, m)
 		logger.Bg().Fatal("Exit", zap.Error(err))
 		return err
