@@ -876,6 +876,7 @@ func NewGormRepository(ctx context.Context, connString string, logger log.Factor
   func (p *repository) {{$opid}}(ctx context.Context{{genParamArgs .PathParams}}{{range .Bodies}}, {{lcFirst .Schema.GoType}} *{{.Schema.GoType}}{{end}}) (*{{$successResponse.Schema.GoType}}, error) {
     {{if isCreate .}}
     var tx *gorm.DB
+	  var v {{$successResponse.Schema.GoType}}
     {{$opBodies := .Bodies}}
     {{range $opBodies}}
     tx = p.db.WithContext(ctx).Create(&{{lcFirst .Schema.GoType}})
@@ -883,7 +884,10 @@ func NewGormRepository(ctx context.Context, connString string, logger log.Factor
       return nil, tx.Error
     }
     {{end}}
-    return {{$successResponse.Schema.GoVariableName}}, nil
+    {{if isBoolResponseType $successResponse}}
+    v = true
+    {{end}}
+    return &v, nil
     {{end}}
     {{if isGet .}}
     // TODO: Check the .First query as codegen is not able

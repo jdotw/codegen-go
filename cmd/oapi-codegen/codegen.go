@@ -185,7 +185,17 @@ func main() {
 			errExit("error generating code: %s\n", err)
 		}
 
-		tagPath := cfg.OutputFile + "/" + strings.ToLower(t)
+		err = os.Mkdir(cfg.OutputFile+"/internal", 0755)
+		if err != nil && !os.IsExist(err) {
+			errExit("error creating /internal output path: %s", err)
+		}
+
+		err = os.Mkdir(cfg.OutputFile+"/internal/app", 0755)
+		if err != nil && !os.IsExist(err) {
+			errExit("error creating /internal/app output path: %s", err)
+		}
+
+		tagPath := cfg.OutputFile + "/internal/app/" + strings.ToLower(t)
 		err = os.Mkdir(tagPath, 0755)
 		if err != nil && !os.IsExist(err) {
 			errExit("error creating tag-specific output path: %s", err)
@@ -253,7 +263,17 @@ func main() {
 			errExit("error generating main code: %s\n", err)
 		}
 
-		err = ioutil.WriteFile(cfg.OutputFile+"/main.go", []byte(*main), 0644)
+		err = os.Mkdir(cfg.OutputFile+"/cmd/", 0755)
+		if err != nil && !os.IsExist(err) {
+			errExit("error creating /cmd/ output path: %s", err)
+		}
+
+		err = os.Mkdir(cfg.OutputFile+"/cmd/"+projectName, 0755)
+		if err != nil && !os.IsExist(err) {
+			errExit("error creating project-name specific /cmd/ output path: %s", err)
+		}
+
+		err = ioutil.WriteFile(cfg.OutputFile+"/cmd/"+projectName+"/main.go", []byte(*main), 0644)
 		if err != nil {
 			errExit("error writing generated main code to file: %s", err)
 		}
