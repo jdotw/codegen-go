@@ -233,28 +233,49 @@ func Generate(swaggerFile string, projectName string, packageName string, tag st
 	var types string
 	if opts.GenerateTypes {
 		types, err = renderString(opts, t, packageName, []string{typeDefinitions, constantDefinitions}, false)
+		if err != nil {
+			return nil, fmt.Errorf("failed to render types: %w", err)
+		}
 	}
 	var client string
 	if opts.GenerateClient {
 		client, err = renderString(opts, t, packageName, []string{clientOut, clientWithResponsesOut}, false)
+		if err != nil {
+			return nil, fmt.Errorf("failed to render client: %w", err)
+		}
 	}
 	var service string
 	if opts.GenerateService {
 		service, err = renderString(opts, t, packageName, []string{serviceOut}, true)
+		if err != nil {
+			return nil, fmt.Errorf("failed to render service: %w", err)
+		}
 	}
 	var transports string
 	if opts.GenerateTransports {
 		transports, err = renderString(opts, t, packageName, []string{transportOut}, true)
+		if err != nil {
+			return nil, fmt.Errorf("failed to render transports: %w", err)
+		}
 	}
 	var endpoints string
 	if opts.GenerateEndpoints {
 		endpoints, err = renderString(opts, t, packageName, []string{endpointsOut}, true)
+		if err != nil {
+			return nil, fmt.Errorf("failed to render endpoints: %w", err)
+		}
 	}
 	var repository string
 	var repositoryGORM string
 	if opts.GenerateRepository {
 		repository, err = renderString(opts, t, packageName, []string{repositoryOut}, true)
+		if err != nil {
+			return nil, fmt.Errorf("failed to render repository: %w", err)
+		}
 		repositoryGORM, err = renderString(opts, t, packageName, []string{repositoryGORMOut}, true)
+		if err != nil {
+			return nil, fmt.Errorf("failed to render GORM repository: %w", err)
+		}
 	}
 	c := Code{
 		Types:            types,
