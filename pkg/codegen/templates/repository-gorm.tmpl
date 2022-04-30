@@ -1,3 +1,4 @@
+{{$tag := .Tag}}
 type repository struct {
 	db  *gorm.DB
 }
@@ -17,7 +18,7 @@ func NewGormRepository(ctx context.Context, connString string, logger log.Factor
     // results in AutoMigrate statements being generated for 
     // request/response body objects instead of actual data models
     {{range uniqueResponseBodyTypes .Ops}}
-		err = db.AutoMigrate(&{{.}}{})
+		err = db.AutoMigrate(&{{lower $tag}}.{{.}}{})
 		if err != nil {
 			logger.For(ctx).Fatal("Failed to migrate db for type {{.}}", zap.Error(err))
 		}
@@ -36,10 +37,10 @@ func NewGormRepository(ctx context.Context, connString string, logger log.Factor
 {{$opid := .OperationId -}}
 {{$tag := .Tag -}}
 {{$successResponse := getSuccessResponseTypeDefinition .}}
-  func (p *repository) {{$opid}}(ctx context.Context{{genParamArgs .PathParams}}{{range .Bodies}}, {{lcFirst .Schema.GoType}} *{{.Schema.GoType}}{{end}}) (*{{$successResponse.Schema.GoType}}, error) {
+  func (p *repository) {{$opid}}(ctx context.Context{{genParamArgs .PathParams}}{{range .Bodies}}, {{lcFirst .Schema.GoType}} *{{lower $tag}}.{{.Schema.GoType}}{{end}}) (*{{lower $tag}}.{{$successResponse.Schema.GoType}}, error) {
     {{if isCreate .}}
     var tx *gorm.DB
-	  var v {{$successResponse.Schema.GoType}}
+	  var v {{lower $tag}}.{{$successResponse.Schema.GoType}}
     {{$opBodies := .Bodies}}
     {{range $opBodies}}
     tx = p.db.WithContext(ctx).Create(&{{lcFirst .Schema.GoType}})
@@ -55,8 +56,8 @@ func NewGormRepository(ctx context.Context, connString string, logger log.Factor
     {{if isGet .}}
     // TODO: Check the .First query as codegen is not able
     // to elegantly deal with multiple request parameters
-	  var v {{$successResponse.Schema.GoType}}
-	  tx := p.db.WithContext(ctx).Model(&{{$successResponse.Schema.GoType}}{}).First(&v, "{{range $pathParams -}}{{.GoVariableName}} = ? {{end}}"{{range $pathParams -}}, {{.GoVariableName}}{{end}})
+	  var v {{lower $tag}}.{{$successResponse.Schema.GoType}}
+	  tx := p.db.WithContext(ctx).Model(&{{lower $tag}}.{{$successResponse.Schema.GoType}}{}).First(&v, "{{range $pathParams -}}{{.GoVariableName}} = ? {{end}}"{{range $pathParams -}}, {{.GoVariableName}}{{end}})
 	  if tx.Error == gorm.ErrRecordNotFound {
 		  return nil, recorderrors.ErrNotFound
   	}
@@ -65,9 +66,9 @@ func NewGormRepository(ctx context.Context, connString string, logger log.Factor
     {{if isUpdate .}}
     // TODO: Check the .Where queries as codegen is not able
     // to elegantly deal with multiple request parameters
-	  var v {{$successResponse.Schema.GoType}}
+	  var v {{lower $tag}}.{{$successResponse.Schema.GoType}}
     {{range .Bodies}}
-  	tx := p.db.WithContext(ctx).Model(&{{$successResponse.Schema.GoType}}{}){{range $pathParams -}}.Where("{{.GoVariableName}} = ?", {{.GoVariableName}}){{end}}.UpdateColumns({{lcFirst .Schema.GoType}})
+  	tx := p.db.WithContext(ctx).Model(&{{lower $tag}}.{{$successResponse.Schema.GoType}}{}){{range $pathParams -}}.Where("{{.GoVariableName}} = ?", {{.GoVariableName}}){{end}}.UpdateColumns({{lcFirst .Schema.GoType}})
 	  if tx.RowsAffected == 0 {
 		  return nil, recorderrors.ErrNotFound
 	  }

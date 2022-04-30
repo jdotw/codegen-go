@@ -607,7 +607,7 @@ type {{$opid}}EndpointRequest struct {
   {{end}}
   {{if .HasBody}}
   {{range .Bodies}}
-  {{.Schema.GoType}} *{{.Schema.GoType}}
+  {{.Schema.GoType}} *{{lower $tag}}.{{.Schema.GoType}}
   {{end}}
   {{end}}
 }
@@ -793,13 +793,13 @@ func GetSwagger() (swagger *openapi3.T, err error) {
 {{$tagPkg := .Package}}
   // {{$tag}} Service
   {
-		repo, err := {{$tagPkg}}.NewGormRepository(context.Background(), os.Getenv("POSTGRES_DSN"), logger, tracer)
+		repo, err := {{$tagPkg}}app.NewGormRepository(context.Background(), os.Getenv("POSTGRES_DSN"), logger, tracer)
 		if err != nil {
-			logger.Bg().Fatal("Failed to create {{$tagPkg}} repository", zap.Error(err))
+			logger.Bg().Fatal("Failed to create {{$tagPkg}}app repository", zap.Error(err))
 		}
-		service := {{$tagPkg}}.NewService(repo, logger, tracer)
-		endPoints := {{$tagPkg}}.NewEndpointSet(service, logger, tracer)
-		{{$tagPkg}}.AddHTTPRoutes(r, endPoints, logger, tracer)
+		service := {{$tagPkg}}app.NewService(repo, logger, tracer)
+		endPoints := {{$tagPkg}}app.NewEndpointSet(service, logger, tracer)
+		{{$tagPkg}}app.AddHTTPRoutes(r, endPoints, logger, tracer)
   } 
 {{end}}{{/* range . */}}
 
@@ -835,7 +835,8 @@ type {{.TypeName}} {{if and (opts.AliasTypes) (.CanAlias)}}={{end}} {{.Schema.Ty
 {{end}}
 {{end}}
 `,
-	"repository-gorm.tmpl": `type repository struct {
+	"repository-gorm.tmpl": `{{$tag := .Tag}}
+type repository struct {
 	db  *gorm.DB
 }
 
@@ -854,7 +855,7 @@ func NewGormRepository(ctx context.Context, connString string, logger log.Factor
     // results in AutoMigrate statements being generated for 
     // request/response body objects instead of actual data models
     {{range uniqueResponseBodyTypes .Ops}}
-		err = db.AutoMigrate(&{{.}}{})
+		err = db.AutoMigrate(&{{lower $tag}}.{{.}}{})
 		if err != nil {
 			logger.For(ctx).Fatal("Failed to migrate db for type {{.}}", zap.Error(err))
 		}
@@ -873,10 +874,10 @@ func NewGormRepository(ctx context.Context, connString string, logger log.Factor
 {{$opid := .OperationId -}}
 {{$tag := .Tag -}}
 {{$successResponse := getSuccessResponseTypeDefinition .}}
-  func (p *repository) {{$opid}}(ctx context.Context{{genParamArgs .PathParams}}{{range .Bodies}}, {{lcFirst .Schema.GoType}} *{{.Schema.GoType}}{{end}}) (*{{$successResponse.Schema.GoType}}, error) {
+  func (p *repository) {{$opid}}(ctx context.Context{{genParamArgs .PathParams}}{{range .Bodies}}, {{lcFirst .Schema.GoType}} *{{lower $tag}}.{{.Schema.GoType}}{{end}}) (*{{lower $tag}}.{{$successResponse.Schema.GoType}}, error) {
     {{if isCreate .}}
     var tx *gorm.DB
-	  var v {{$successResponse.Schema.GoType}}
+	  var v {{lower $tag}}.{{$successResponse.Schema.GoType}}
     {{$opBodies := .Bodies}}
     {{range $opBodies}}
     tx = p.db.WithContext(ctx).Create(&{{lcFirst .Schema.GoType}})
@@ -892,8 +893,8 @@ func NewGormRepository(ctx context.Context, connString string, logger log.Factor
     {{if isGet .}}
     // TODO: Check the .First query as codegen is not able
     // to elegantly deal with multiple request parameters
-	  var v {{$successResponse.Schema.GoType}}
-	  tx := p.db.WithContext(ctx).Model(&{{$successResponse.Schema.GoType}}{}).First(&v, "{{range $pathParams -}}{{.GoVariableName}} = ? {{end}}"{{range $pathParams -}}, {{.GoVariableName}}{{end}})
+	  var v {{lower $tag}}.{{$successResponse.Schema.GoType}}
+	  tx := p.db.WithContext(ctx).Model(&{{lower $tag}}.{{$successResponse.Schema.GoType}}{}).First(&v, "{{range $pathParams -}}{{.GoVariableName}} = ? {{end}}"{{range $pathParams -}}, {{.GoVariableName}}{{end}})
 	  if tx.Error == gorm.ErrRecordNotFound {
 		  return nil, recorderrors.ErrNotFound
   	}
@@ -902,9 +903,9 @@ func NewGormRepository(ctx context.Context, connString string, logger log.Factor
     {{if isUpdate .}}
     // TODO: Check the .Where queries as codegen is not able
     // to elegantly deal with multiple request parameters
-	  var v {{$successResponse.Schema.GoType}}
+	  var v {{lower $tag}}.{{$successResponse.Schema.GoType}}
     {{range .Bodies}}
-  	tx := p.db.WithContext(ctx).Model(&{{$successResponse.Schema.GoType}}{}){{range $pathParams -}}.Where("{{.GoVariableName}} = ?", {{.GoVariableName}}){{end}}.UpdateColumns({{lcFirst .Schema.GoType}})
+  	tx := p.db.WithContext(ctx).Model(&{{lower $tag}}.{{$successResponse.Schema.GoType}}{}){{range $pathParams -}}.Where("{{.GoVariableName}} = ?", {{.GoVariableName}}){{end}}.UpdateColumns({{lcFirst .Schema.GoType}})
 	  if tx.RowsAffected == 0 {
 		  return nil, recorderrors.ErrNotFound
 	  }
@@ -925,7 +926,7 @@ type Repository interface {
 {{range .Ops}}
 {{$opid := .OperationId -}}
 {{$successResponse := getSuccessResponseTypeDefinition .}}
-{{$tag := .Tag -}}{{$opid}}(ctx context.Context{{genParamArgs .PathParams}}{{range .Bodies}}, {{lcFirst .Schema.GoType}} *{{.Schema.GoType}}{{end}}) (*{{$successResponse.Schema.GoType}}, error){{end}}
+{{$tag := .Tag -}}{{$opid}}(ctx context.Context{{genParamArgs .PathParams}}{{range .Bodies}}, {{lcFirst .Schema.GoType}} *{{lower $tag}}.{{.Schema.GoType}}{{end}}) (*{{lower $tag}}.{{$successResponse.Schema.GoType}}, error){{end}}
 }
 `,
 	"request-bodies.tmpl": `{{range .}}{{$opid := .OperationId}}
@@ -946,7 +947,7 @@ type Service interface {
 {{$pathParams := .PathParams -}}
 {{$opid := .OperationId -}}
 {{$successResponse := getSuccessResponseTypeDefinition .}}
-{{$opid}}(ctx context.Context{{genParamArgs .PathParams}}{{range .Bodies}}, {{lcFirst .Schema.GoType}} *{{.Schema.GoType}}{{end}}) (*{{$successResponse.Schema.GoType}}, error){{end}}
+{{$opid}}(ctx context.Context{{genParamArgs .PathParams}}{{range .Bodies}}, {{lcFirst .Schema.GoType}} *{{lower $tag}}.{{.Schema.GoType}}{{end}}) (*{{lower $tag}}.{{$successResponse.Schema.GoType}}, error){{end}}
 }
 
 type service struct {
@@ -969,7 +970,7 @@ func NewService(repository Repository, logger log.Factory, tracer opentracing.Tr
 {{$opid := .OperationId -}}
 {{$successResponse := getSuccessResponseTypeDefinition .}}
 {{$tag := .Tag -}}
-  func (f *service) {{$opid}}(ctx context.Context{{genParamArgs .PathParams}}{{range .Bodies}}, {{lcFirst .Schema.GoType}} *{{.Schema.GoType}}{{end}}) (*{{$successResponse.Schema.GoType}}, error) {
+  func (f *service) {{$opid}}(ctx context.Context{{genParamArgs .PathParams}}{{range .Bodies}}, {{lcFirst .Schema.GoType}} *{{lower $tag}}.{{.Schema.GoType}}{{end}}) (*{{lower $tag}}.{{$successResponse.Schema.GoType}}, error) {
     v, err := f.repository.{{$opid}}(ctx{{genParamNames .PathParams}}{{range .Bodies}}, {{lcFirst .Schema.GoType}}{{end}})
     return v, err
   }
@@ -1004,7 +1005,7 @@ func AddHTTPRoutes(r *mux.Router, endpoints EndpointSet, logger log.Factory, tra
 // {{$opid}}
 
 func decode{{$opid}}EndpointRequest(_ context.Context, r *http.Request) (interface{}, error) {
-  {{range .Bodies}}var {{lcFirst .Schema.GoType}} {{.Schema.GoType}}{{end}}
+  {{range .Bodies}}var {{lcFirst .Schema.GoType}} {{lower $tag}}.{{.Schema.GoType}}{{end}}
   {{range .Bodies}}
 	if err := json.NewDecoder(r.Body).Decode(&{{lcFirst .Schema.GoType}}); err != nil {
 		return nil, err

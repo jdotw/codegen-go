@@ -36,7 +36,7 @@ type {{$opid}}EndpointRequest struct {
   {{end}}
   {{if .HasBody}}
   {{range .Bodies}}
-  {{.Schema.GoType}} *{{.Schema.GoType}}
+  {{.Schema.GoType}} *{{lower $tag}}.{{.Schema.GoType}}
   {{end}}
   {{end}}
 }
