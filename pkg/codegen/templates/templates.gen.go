@@ -481,17 +481,16 @@ const (
 {{end}}
 )
 {{end}}
-{{if gt (len .EnumDefinitions) 0 }}
-{{range $Enum := .EnumDefinitions}}
+{{- if gt (len .EnumDefinitions) 0 }}
+{{- range $Enum := .EnumDefinitions}}
 // Defines values for {{$Enum.TypeName}}.
 const (
 {{- range $index, $value := $Enum.Schema.EnumValues}}
   {{$index}} {{$Enum.TypeName}} = {{$Enum.ValueWrapper}}{{$value}}{{$Enum.ValueWrapper}}
 {{- end}}
 )
-{{end}}
-{{end}}
-`,
+{{- end}}
+{{- end}}`,
 	"docker-compose.yaml.tmpl": `version: "3.9"
 services:
   {{ .ProjectName }}:
