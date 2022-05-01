@@ -485,9 +485,9 @@ const (
 {{range $Enum := .EnumDefinitions}}
 // Defines values for {{$Enum.TypeName}}.
 const (
-{{range $index, $value := $Enum.Schema.EnumValues}}
+{{- range $index, $value := $Enum.Schema.EnumValues}}
   {{$index}} {{$Enum.TypeName}} = {{$Enum.ValueWrapper}}{{$value}}{{$Enum.ValueWrapper}}
-{{end}}
+{{- end}}
 )
 {{end}}
 {{end}}
@@ -1024,7 +1024,7 @@ func decode{{$opid}}EndpointRequest(_ context.Context, r *http.Request) (interfa
 `,
 	"typedef.tmpl": `{{range .Types}}
 {{ with .Schema.Description }}{{ . }}{{ else }}// {{.TypeName}} defines model for {{.JsonName}}.{{ end }}
-type {{.TypeName}} {{if and (opts.AliasTypes) (.CanAlias)}}={{end}} {{.Schema.TypeDecl}}
+type {{.TypeName}} {{if and (opts.AliasTypes) (.CanAlias)}}={{end}}{{.Schema.TypeDecl}}
 {{end}}
 `,
 }
