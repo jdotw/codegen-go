@@ -677,6 +677,9 @@ func GenerateTypesForOperations(t *template.Template, ops []OperationDefinition)
 // Uses the template engine to generate the function which registers our wrappers
 // as Echo path handlers.
 func GenerateClient(t *template.Template, ops []OperationDefinition) (string, error) {
+	for i := 0; i < len(ops); i++ {
+		fmt.Printf("OPS %d: %+v\n\n", i, ops[i])
+	}
 	return GenerateTemplates([]string{"client.tmpl"}, t, ops)
 }
 

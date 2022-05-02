@@ -180,6 +180,8 @@ func main() {
 		opts.UserTemplates = templates
 		// opts.ImportMapping = cfg.ImportMapping
 
+		opts.SkipFmt = true
+
 		code, err := codegen.Generate(flag.Arg(0), projectName, strings.ToLower(t), t, opts)
 		if err != nil {
 			errExit("error generating code: %s\n", err)
