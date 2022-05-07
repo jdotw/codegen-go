@@ -180,7 +180,7 @@ func main() {
 		opts.UserTemplates = templates
 		// opts.ImportMapping = cfg.ImportMapping
 
-		opts.SkipFmt = true
+		// opts.SkipFmt = true
 
 		code, err := codegen.Generate(flag.Arg(0), projectName, strings.ToLower(t), t, opts)
 		if err != nil {
@@ -223,6 +223,12 @@ func main() {
 			if err != nil {
 				errExit("error writing generated types code to file: %s", err)
 			}
+
+			err = ioutil.WriteFile(tagPath+"/types.go", []byte(code.Types), 0644)
+			if err != nil {
+				errExit("error writing generated types code to file: %s", err)
+			}
+
 		}
 
 		if opts.GenerateClient {
