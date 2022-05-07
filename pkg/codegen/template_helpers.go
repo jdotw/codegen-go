@@ -73,6 +73,18 @@ func genEndpointRequestVars(params []ParameterDefinition) string {
 	return strings.Join(parts, "")
 }
 
+func genEndpointRequestVarSetters(params []ParameterDefinition) string {
+	if len(params) == 0 {
+		return ""
+	}
+	parts := make([]string, len(params))
+	for i, p := range params {
+		paramName := p.GoVariableName()
+		parts[i] = fmt.Sprintf("endpointRequest.%s = vars[\"%s\"]\n", ToCamelCase(paramName), p.ParamName)
+	}
+	return strings.Join(parts, "")
+}
+
 func genEndpointRequestDefs(params []ParameterDefinition) string {
 	if len(params) == 0 {
 		return ""
@@ -396,6 +408,7 @@ var TemplateFunctions = template.FuncMap{
 	"genParamNames":                    genParamNames,
 	"genParamFmtString":                ReplacePathParamsWithStr,
 	"genEndpointRequestVars":           genEndpointRequestVars,
+	"genEndpointRequestVarSetters":     genEndpointRequestVarSetters,
 	"hasEndpointRequestVars":           hasEndpointRequestVars,
 	"genEndpointRequestDefs":           genEndpointRequestDefs,
 	"genErrorStringVar":                genErrorStringVar,
