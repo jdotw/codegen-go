@@ -23,29 +23,35 @@ func NewEndpointSet(s Service, logger log.Factory, tracer opentracing.Tracer) En
 	}
 }
 
+
 {{range .Ops}}
 {{$opid := .OperationId -}}
 {{$hasParams := .RequiresParamObject -}}
 {{$pathParams := .PathParams -}}
 {{$tag := .Tag -}}
-// {{$opid}} 
 
+
+
+// {{$opid}} 
 type {{$opid}}EndpointRequest struct {
-  {{range .PathParams -}}
-  {{.GoName}} string
-  {{end}}
-  {{if .HasBody}}
-  {{range .Bodies}}
-  {{.Schema.GoType}} *{{lower $tag}}.{{.Schema.GoType}}
-  {{end}}
-  {{end}}
+{{range .PathParams -}}
+{{.GoName}} string
+{{end -}}
+{{if .HasBody -}}
+{{range .Bodies -}}
+requestBody {{$opid}}{{.Suffix}}Request
+{{end -}}
+{{end -}}
 }
 
 func make{{$opid}}Endpoint(s Service, logger log.Factory, tracer opentracing.Tracer) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		logger.For(ctx).Info("{{$tag}}.{{$opid}}Endpoint received request")
 		req := request.({{$opid}}EndpointRequest)
-		v, err := s.{{$opid}}(ctx{{range .PathParams -}}, req.{{camelCase .ParamName}}{{end}}{{range .Bodies}}, req.{{.Schema.GoType}}{{end}})
+    // 
+    // TODO: Create the object that is passed to the service
+    // 
+		v, err := s.{{$opid}}(ctx{{range .PathParams -}}, req.{{camelCase .ParamName}}{{end}}{{range .Bodies}}, &req.requestBody{{end}})
 		if err != nil {
 			return &v, err
 		}
