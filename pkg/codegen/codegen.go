@@ -116,7 +116,7 @@ func constructImportMapping(swagger *openapi3.T, projectName string, input map[s
 	tags := util.UniquePathTags(swagger)
 	for _, s := range tags {
 		result["/internal/app/"+s] = goImport{Name: strings.ToLower(s) + "app", Path: "github.com/12kmps/baas-" + projectName + "/internal/app/" + strings.ToLower(s)}
-		result["types-/pkg/"+s] = goImport{Name: strings.ToLower(s), Path: "github.com/12kmps/baas-" + projectName + "/pkg/" + strings.ToLower(s)}
+		result["types-/pkg/"+s] = goImport{Name: strings.ToLower(s) + "api", Path: "github.com/12kmps/baas-" + projectName + "/pkg/" + strings.ToLower(s)}
 	}
 
 	return result
