@@ -1,8 +1,9 @@
 
 {{$tag := .Tag}}
 type Repository interface {
-{{range .Ops}}
+{{range .Ops -}}
 {{$opid := .OperationId -}}
-{{$successResponse := getSuccessResponseTypeDefinition .}}
-{{$tag := .Tag -}}{{$opid}}(ctx context.Context{{genParamArgs .PathParams}}{{range .Bodies}}, {{lcFirst .Schema.GoType}} *{{lower $tag}}.{{.Schema.GoType}}{{end}}) (*{{lower $tag}}.{{$successResponse.Schema.GoType}}, error){{end}}
+{{$successResponse := getSuccessResponseTypeDefinition . -}}
+{{$tag := .Tag -}}{{$opid}}(ctx context.Context{{genParamArgs .PathParams}}{{range .Bodies}}, {{lcFirst $opid}}{{.Suffix}}Request *{{$opid}}{{.Suffix}}Request{{end}}) (*{{lower $tag}}api.{{$successResponse.Schema.GoType}}, error)
+{{end -}}
 }
