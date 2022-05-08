@@ -1,4 +1,4 @@
-{{$tag := .Tag}}
+{{$tag := .Tag -}}
 
 func AddHTTPRoutes(r *mux.Router, endpoints EndpointSet, logger log.Factory, tracer opentracing.Tracer) {
 	options := []httptransport.ServerOption{
@@ -6,7 +6,7 @@ func AddHTTPRoutes(r *mux.Router, endpoints EndpointSet, logger log.Factory, tra
     httptransport.ServerBefore(jwt.HTTPAuthorizationToContext()),
 	}
 
-{{range .Ops}}
+{{range .Ops -}}
 {{$hasParams := .RequiresParamObject -}}
 {{$pathParams := .PathParams -}}
 {{$opid := .OperationId -}}
@@ -17,10 +17,11 @@ func AddHTTPRoutes(r *mux.Router, endpoints EndpointSet, logger log.Factory, tra
 		options...,
 	)
 	r.Handle("{{.Path}}", {{lcFirst $opid}}Handler).Methods("{{.Method}}")
-{{end}}
+
+{{end -}}
 }
 
-{{range .Ops}}
+{{range .Ops -}}
 {{$pathParams := .PathParams -}}
 {{$opid := .OperationId -}}
 
@@ -28,18 +29,16 @@ func AddHTTPRoutes(r *mux.Router, endpoints EndpointSet, logger log.Factory, tra
 
 func decode{{$opid}}EndpointRequest(_ context.Context, r *http.Request) (interface{}, error) {
   var endpointRequest {{$opid}}EndpointRequest
-  {{range .Bodies}}
-	if err := json.NewDecoder(r.Body).Decode(&endpointRequest.requestBody); err != nil {
+  {{range .Bodies -}}
+	if err := json.NewDecoder(r.Body).Decode(&endpointRequest); err != nil {
 		return nil, err
-	}{{end}}
+	}{{end -}}
 
   {{if hasEndpointRequestVars $pathParams}}
 	vars := mux.Vars(r)
-  {{end}}
-
-  {{genEndpointRequestVarSetters $pathParams}}
-
+  {{end -}}
+  {{- genEndpointRequestVarSetters $pathParams}}
 	return endpointRequest, nil
 }
-{{end}}
+{{end -}}
 

@@ -23,35 +23,63 @@ func NewEndpointSet(s Service, logger log.Factory, tracer opentracing.Tracer) En
 	}
 }
 
-
 {{range .Ops}}
 {{$opid := .OperationId -}}
 {{$hasParams := .RequiresParamObject -}}
 {{$pathParams := .PathParams -}}
 {{$tag := .Tag -}}
 
-
-
 // {{$opid}} 
+
+{{range .Bodies -}}
+type {{$opid}}{{.Suffix}}EndpointRequestBody {{.Schema.GoType}}
+
+{{end -}}
+
 type {{$opid}}EndpointRequest struct {
 {{range .PathParams -}}
 {{.GoName}} string
 {{end -}}
 {{if .HasBody -}}
 {{range .Bodies -}}
-requestBody {{$opid}}{{.Suffix}}Request
+{{$opid}}{{.Suffix}}EndpointRequestBody
 {{end -}}
 {{end -}}
 }
 
+{{$successResponse := getSuccessResponseTypeDefinition . -}}
 func make{{$opid}}Endpoint(s Service, logger log.Factory, tracer opentracing.Tracer) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		logger.For(ctx).Info("{{$tag}}.{{$opid}}Endpoint received request")
-		req := request.({{$opid}}EndpointRequest)
+		er := request.({{$opid}}EndpointRequest)
+    {{if isGet . -}}
+		v, err := s.{{$opid}}(ctx{{range .PathParams -}}, er.{{camelCase .ParamName}}{{end}})
+    {{else -}}
+
+    // Convert endpoint request to JSON
+		erJSON, err := json.Marshal(er)
+    if err != nil {
+      return nil, err
+    }
+
+    // Create {{$successResponse.Schema.GoType}} from endpoint request JSON
+		var sr {{$successResponse.Schema.GoType}}
+		json.Unmarshal(erJSON, &sr)
+
+    // Set variables from path parameters
+    {{- range .PathParams}}
+		sr.{{.GoName}} = er.{{.GoName}}
+    {{- end}}
+
     // 
-    // TODO: Create the object that is passed to the service
+    // TODO: Review the code above. 
+    //       The JSON marshalling isn't ideal. 
+    //       You should manually construct the struct being passed 
+    //       to the service from variables in the endpoint request
     // 
-		v, err := s.{{$opid}}(ctx{{range .PathParams -}}, req.{{camelCase .ParamName}}{{end}}{{range .Bodies}}, &req.requestBody{{end}})
+
+		v, err := s.{{$opid}}(ctx{{range .Bodies}}, &sr{{end}})
+    {{end -}}
 		if err != nil {
 			return &v, err
 		}

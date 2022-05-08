@@ -608,35 +608,63 @@ func NewEndpointSet(s Service, logger log.Factory, tracer opentracing.Tracer) En
 	}
 }
 
-
 {{range .Ops}}
 {{$opid := .OperationId -}}
 {{$hasParams := .RequiresParamObject -}}
 {{$pathParams := .PathParams -}}
 {{$tag := .Tag -}}
 
-
-
 // {{$opid}} 
+
+{{range .Bodies -}}
+type {{$opid}}{{.Suffix}}EndpointRequestBody {{.Schema.GoType}}
+
+{{end -}}
+
 type {{$opid}}EndpointRequest struct {
 {{range .PathParams -}}
 {{.GoName}} string
 {{end -}}
 {{if .HasBody -}}
 {{range .Bodies -}}
-requestBody {{$opid}}{{.Suffix}}Request
+{{$opid}}{{.Suffix}}EndpointRequestBody
 {{end -}}
 {{end -}}
 }
 
+{{$successResponse := getSuccessResponseTypeDefinition . -}}
 func make{{$opid}}Endpoint(s Service, logger log.Factory, tracer opentracing.Tracer) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		logger.For(ctx).Info("{{$tag}}.{{$opid}}Endpoint received request")
-		req := request.({{$opid}}EndpointRequest)
+		er := request.({{$opid}}EndpointRequest)
+    {{if isGet . -}}
+		v, err := s.{{$opid}}(ctx{{range .PathParams -}}, er.{{camelCase .ParamName}}{{end}})
+    {{else -}}
+
+    // Convert endpoint request to JSON
+		erJSON, err := json.Marshal(er)
+    if err != nil {
+      return nil, err
+    }
+
+    // Create {{$successResponse.Schema.GoType}} from endpoint request JSON
+		var sr {{$successResponse.Schema.GoType}}
+		json.Unmarshal(erJSON, &sr)
+
+    // Set variables from path parameters
+    {{- range .PathParams}}
+		sr.{{.GoName}} = er.{{.GoName}}
+    {{- end}}
+
     // 
-    // TODO: Create the object that is passed to the service
+    // TODO: Review the code above. 
+    //       The JSON marshalling isn't ideal. 
+    //       You should manually construct the struct being passed 
+    //       to the service from variables in the endpoint request
     // 
-		v, err := s.{{$opid}}(ctx{{range .PathParams -}}, req.{{camelCase .ParamName}}{{end}}{{range .Bodies}}, &req.requestBody{{end}})
+
+		v, err := s.{{$opid}}(ctx{{range .Bodies}}, &sr{{end}})
+    {{end -}}
 		if err != nil {
 			return &v, err
 		}
@@ -893,53 +921,52 @@ func NewGormRepository(ctx context.Context, connString string, logger log.Factor
 {{$pathParams := .PathParams -}}
 {{$opid := .OperationId -}}
 {{$tag := .Tag -}}
-{{$successResponse := getSuccessResponseTypeDefinition .}}
-  {{if isCreate .}}
+{{$successResponse := getSuccessResponseTypeDefinition . -}}
+  {{if isCreate . -}}
     func (p *repository) {{$opid}}(ctx context.Context{{range .Bodies}}, {{lcFirst $successResponse.Schema.GoType}} *{{$successResponse.Schema.GoType}}{{end}}) (*{{$successResponse.Schema.GoType}}, error) {
     var tx *gorm.DB
-    {{$opBodies := .Bodies}}
-    {{range $opBodies}}
+    {{$opBodies := .Bodies -}}
+    {{range $opBodies -}}
     tx = p.db.WithContext(ctx).Create({{lcFirst $successResponse.Schema.GoType}})
     if (tx.Error != nil) {
       return nil, tx.Error
     }
-    {{end}}
-    {{if isBoolResponseType $successResponse}}
+    {{end -}}
+    {{if isBoolResponseType $successResponse -}}
     v := true
     return &v, nil
-    {{else}}
+    {{else -}}
     return {{lcFirst $successResponse.Schema.GoType}}, nil
-    {{end}}
-  {{end}}
-  {{if isGet .}}
+    {{end -}}
+  {{end -}}
+  {{if isGet . -}}
     func (p *repository) {{$opid}}(ctx context.Context{{genParamArgs .PathParams}}{{range .Bodies}}, {{lcFirst $successResponse.Schema.GoType}} *{{$successResponse.Schema.GoType}}{{end}}) (*{{$successResponse.Schema.GoType}}, error) {
+	  var v {{$successResponse.Schema.GoType}}
     // TODO: Check the .First query as codegen is not able
     // to elegantly deal with multiple request parameters
-	  var v {{$successResponse.Schema.GoType}}
 	  tx := p.db.WithContext(ctx).Model(&{{$successResponse.Schema.GoType}}{}).First(&v, "{{range $pathParams -}}{{.ParamName}} = ? {{end}}"{{range $pathParams -}}, {{.GoVariableName}}{{end}})
 	  if tx.Error == gorm.ErrRecordNotFound {
 		  return nil, recorderrors.ErrNotFound
   	}
   	return &v, tx.Error
-    {{end}}
-  {{if isUpdate .}}
+  {{end -}}
+  {{if isUpdate . -}}
     func (p *repository) {{$opid}}(ctx context.Context{{range .Bodies}}, {{lcFirst $successResponse.Schema.GoType}} *{{$successResponse.Schema.GoType}}{{end}}) (*{{$successResponse.Schema.GoType}}, error) {
-    // TODO: Check the .Where queries as codegen is not able
-    // to elegantly deal with multiple request parameters
 	  var v {{$successResponse.Schema.GoType}}
-    {{range .Bodies}}
-  	tx := p.db.WithContext(ctx).Model(&{{$successResponse.Schema.GoType}}{}){{range $pathParams -}}.Where("{{.ParamName}} = ?", {{.GoVariableName}}){{end}}.UpdateColumns({{lcFirst $successResponse.Schema.GoType}})
+    // TODO: Check that the .Where query is appropriate
+    {{range .Bodies -}}
+  	tx := p.db.WithContext(ctx).Model(&{{$successResponse.Schema.GoType}}{}).Where("id = ?", {{lcFirst $successResponse.Schema.GoType}}.ID).UpdateColumns({{lcFirst $successResponse.Schema.GoType}})
 	  if tx.RowsAffected == 0 {
 		  return nil, recorderrors.ErrNotFound
 	  }
-    {{end}}
+    {{end -}}
   	return &v, tx.Error
-  {{end}}
-  {{if isOther .}}
+  {{end -}}
+  {{if isOther . -}}
   func (p *repository) {{$opid}}(ctx context.Context{{genParamArgs .PathParams}}{{range .Bodies}}, {{lcFirst $successResponse.Schema.GoType}} *{{$successResponse.Schema.GoType}}{{end}}) (*{{$successResponse.Schema.GoType}}, error) {
     // TODO: Unable to generate code for this Operation
     return nil, errors.New("Not Implemented")
-  {{end}}
+  {{end -}}
   }
 {{end}}
 
@@ -1017,7 +1044,7 @@ func NewService(repository Repository, logger log.Factory, tracer opentracing.Tr
   }
 {{end}}
 `,
-	"transport.tmpl": `{{$tag := .Tag}}
+	"transport.tmpl": `{{$tag := .Tag -}}
 
 func AddHTTPRoutes(r *mux.Router, endpoints EndpointSet, logger log.Factory, tracer opentracing.Tracer) {
 	options := []httptransport.ServerOption{
@@ -1025,7 +1052,7 @@ func AddHTTPRoutes(r *mux.Router, endpoints EndpointSet, logger log.Factory, tra
     httptransport.ServerBefore(jwt.HTTPAuthorizationToContext()),
 	}
 
-{{range .Ops}}
+{{range .Ops -}}
 {{$hasParams := .RequiresParamObject -}}
 {{$pathParams := .PathParams -}}
 {{$opid := .OperationId -}}
@@ -1036,10 +1063,11 @@ func AddHTTPRoutes(r *mux.Router, endpoints EndpointSet, logger log.Factory, tra
 		options...,
 	)
 	r.Handle("{{.Path}}", {{lcFirst $opid}}Handler).Methods("{{.Method}}")
-{{end}}
+
+{{end -}}
 }
 
-{{range .Ops}}
+{{range .Ops -}}
 {{$pathParams := .PathParams -}}
 {{$opid := .OperationId -}}
 
@@ -1047,20 +1075,18 @@ func AddHTTPRoutes(r *mux.Router, endpoints EndpointSet, logger log.Factory, tra
 
 func decode{{$opid}}EndpointRequest(_ context.Context, r *http.Request) (interface{}, error) {
   var endpointRequest {{$opid}}EndpointRequest
-  {{range .Bodies}}
-	if err := json.NewDecoder(r.Body).Decode(&endpointRequest.requestBody); err != nil {
+  {{range .Bodies -}}
+	if err := json.NewDecoder(r.Body).Decode(&endpointRequest); err != nil {
 		return nil, err
-	}{{end}}
+	}{{end -}}
 
   {{if hasEndpointRequestVars $pathParams}}
 	vars := mux.Vars(r)
-  {{end}}
-
-  {{genEndpointRequestVarSetters $pathParams}}
-
+  {{end -}}
+  {{- genEndpointRequestVarSetters $pathParams}}
 	return endpointRequest, nil
 }
-{{end}}
+{{end -}}
 
 `,
 	"typedef.tmpl": `{{range .Types}}
