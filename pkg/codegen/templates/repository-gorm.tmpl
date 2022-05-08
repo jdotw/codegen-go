@@ -18,7 +18,7 @@ func NewGormRepository(ctx context.Context, connString string, logger log.Factor
     // results in AutoMigrate statements being generated for 
     // request/response body objects instead of actual data models
     {{range uniqueResponseBodyTypes .Ops}}
-		err = db.AutoMigrate(&{{lower $tag}}api.{{.}}{})
+		err = db.AutoMigrate(&{{.}}{})
 		if err != nil {
 			logger.For(ctx).Fatal("Failed to migrate db for type {{.}}", zap.Error(err))
 		}
@@ -37,48 +37,52 @@ func NewGormRepository(ctx context.Context, connString string, logger log.Factor
 {{$opid := .OperationId -}}
 {{$tag := .Tag -}}
 {{$successResponse := getSuccessResponseTypeDefinition .}}
-  func (p *repository) {{$opid}}(ctx context.Context{{genParamArgs .PathParams}}{{range .Bodies}}, {{lcFirst $opid}}{{.Suffix}}Request *{{$opid}}{{.Suffix}}Request{{end}}) (*{{lower $tag}}api.{{$successResponse.Schema.GoType}}, error) {
-    {{if isCreate .}}
+  {{if isCreate .}}
+    func (p *repository) {{$opid}}(ctx context.Context{{range .Bodies}}, {{lcFirst $successResponse.Schema.GoType}} *{{$successResponse.Schema.GoType}}{{end}}) (*{{$successResponse.Schema.GoType}}, error) {
     var tx *gorm.DB
-	  var v {{lower $tag}}api.{{$successResponse.Schema.GoType}}
     {{$opBodies := .Bodies}}
     {{range $opBodies}}
-    tx = p.db.WithContext(ctx).Model(&{{lower $tag}}api.{{$successResponse.Schema.GoType}}{}).Create({{lcFirst $opid}}{{.Suffix}}Request)
+    tx = p.db.WithContext(ctx).Create({{lcFirst $successResponse.Schema.GoType}})
     if (tx.Error != nil) {
       return nil, tx.Error
     }
     {{end}}
     {{if isBoolResponseType $successResponse}}
-    v = true
-    {{end}}
+    v := true
     return &v, nil
+    {{else}}
+    return {{lcFirst $successResponse.Schema.GoType}}, nil
     {{end}}
-    {{if isGet .}}
+  {{end}}
+  {{if isGet .}}
+    func (p *repository) {{$opid}}(ctx context.Context{{genParamArgs .PathParams}}{{range .Bodies}}, {{lcFirst $successResponse.Schema.GoType}} *{{$successResponse.Schema.GoType}}{{end}}) (*{{$successResponse.Schema.GoType}}, error) {
     // TODO: Check the .First query as codegen is not able
     // to elegantly deal with multiple request parameters
-	  var v {{lower $tag}}api.{{$successResponse.Schema.GoType}}
-	  tx := p.db.WithContext(ctx).Model(&{{lower $tag}}api.{{$successResponse.Schema.GoType}}{}).First(&v, "{{range $pathParams -}}{{.GoVariableName}} = ? {{end}}"{{range $pathParams -}}, {{.GoVariableName}}{{end}})
+	  var v {{$successResponse.Schema.GoType}}
+	  tx := p.db.WithContext(ctx).Model(&{{$successResponse.Schema.GoType}}{}).First(&v, "{{range $pathParams -}}{{.ParamName}} = ? {{end}}"{{range $pathParams -}}, {{.GoVariableName}}{{end}})
 	  if tx.Error == gorm.ErrRecordNotFound {
 		  return nil, recorderrors.ErrNotFound
   	}
   	return &v, tx.Error
     {{end}}
-    {{if isUpdate .}}
+  {{if isUpdate .}}
+    func (p *repository) {{$opid}}(ctx context.Context{{range .Bodies}}, {{lcFirst $successResponse.Schema.GoType}} *{{$successResponse.Schema.GoType}}{{end}}) (*{{$successResponse.Schema.GoType}}, error) {
     // TODO: Check the .Where queries as codegen is not able
     // to elegantly deal with multiple request parameters
-	  var v {{lower $tag}}api.{{$successResponse.Schema.GoType}}
+	  var v {{$successResponse.Schema.GoType}}
     {{range .Bodies}}
-  	tx := p.db.WithContext(ctx).Model(&{{lower $tag}}api.{{$successResponse.Schema.GoType}}{}){{range $pathParams -}}.Where("{{.GoVariableName}} = ?", {{.GoVariableName}}){{end}}.UpdateColumns({{lcFirst $opid}}{{.Suffix}}Request)
+  	tx := p.db.WithContext(ctx).Model(&{{$successResponse.Schema.GoType}}{}){{range $pathParams -}}.Where("{{.ParamName}} = ?", {{.GoVariableName}}){{end}}.UpdateColumns({{lcFirst $successResponse.Schema.GoType}})
 	  if tx.RowsAffected == 0 {
 		  return nil, recorderrors.ErrNotFound
 	  }
     {{end}}
   	return &v, tx.Error
-    {{end}}
-    {{if isOther .}}
+  {{end}}
+  {{if isOther .}}
+  func (p *repository) {{$opid}}(ctx context.Context{{genParamArgs .PathParams}}{{range .Bodies}}, {{lcFirst $successResponse.Schema.GoType}} *{{$successResponse.Schema.GoType}}{{end}}) (*{{$successResponse.Schema.GoType}}, error) {
     // TODO: Unable to generate code for this Operation
     return nil, errors.New("Not Implemented")
-    {{end}}
+  {{end}}
   }
 {{end}}
 

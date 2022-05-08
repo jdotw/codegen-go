@@ -4,6 +4,11 @@ type Repository interface {
 {{range .Ops -}}
 {{$opid := .OperationId -}}
 {{$successResponse := getSuccessResponseTypeDefinition . -}}
-{{$tag := .Tag -}}{{$opid}}(ctx context.Context{{genParamArgs .PathParams}}{{range .Bodies}}, {{lcFirst $opid}}{{.Suffix}}Request *{{$opid}}{{.Suffix}}Request{{end}}) (*{{lower $tag}}api.{{$successResponse.Schema.GoType}}, error)
+{{$tag := .Tag -}}
+{{if isGet . -}}
+  {{$opid}}(ctx context.Context{{genParamArgs .PathParams}}{{range .Bodies}}, {{lcFirst $successResponse.Schema.GoType}} *{{$successResponse.Schema.GoType}}{{end}}) (*{{$successResponse.Schema.GoType}}, error)
+{{else -}}
+  {{$opid}}(ctx context.Context{{range .Bodies}}, {{lcFirst $successResponse.Schema.GoType}} *{{$successResponse.Schema.GoType}}{{end}}) (*{{$successResponse.Schema.GoType}}, error)
+{{end -}}
 {{end -}}
 }
