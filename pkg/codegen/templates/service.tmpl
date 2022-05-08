@@ -2,12 +2,17 @@
 {{$tagVar := .TagCamel}}
 {{$tagPkg := .Package}}
 type Service interface {
-{{range .Ops}}
+{{range .Ops -}}
 {{$hasParams := .RequiresParamObject -}}
 {{$pathParams := .PathParams -}}
 {{$opid := .OperationId -}}
-{{$successResponse := getSuccessResponseTypeDefinition .}}
-{{$opid}}(ctx context.Context{{genParamArgs .PathParams}}{{range .Bodies}}, {{lcFirst $opid}}{{.Suffix}}Request *{{$opid}}{{.Suffix}}Request{{end}}) (*{{lower $tag}}api.{{$successResponse.Schema.GoType}}, error){{end}}
+{{$successResponse := getSuccessResponseTypeDefinition . -}}
+{{$pathVariableDefs := "" -}}
+{{if isGet . -}}
+{{$pathVariableDefs = genParamArgs .PathParams -}}
+{{end -}}
+{{$opid}}(ctx context.Context{{$pathVariableDefs}}{{range .Bodies}}, {{lcFirst $successResponse.Schema.GoType}} *{{$successResponse.Schema.GoType}}{{end}}) (*{{$successResponse.Schema.GoType}}, error)
+{{end -}}
 }
 
 type service struct {
@@ -24,27 +29,20 @@ func NewService(repository Repository, logger log.Factory, tracer opentracing.Tr
 	return svc
 }
 
-// Service request types
-{{range .Ops -}}
-{{$hasParams := .RequiresParamObject -}}
-{{$pathParams := .PathParams -}}
-{{$opid := .OperationId -}}
-{{range .Bodies -}}
-// {{$opid}} Request
-type {{$opid}}{{.Suffix}}Request {{.Schema.GoType}}
-
-{{end}}
-{{- end -}}
-
-
 {{range .Ops}}
 {{$hasParams := .RequiresParamObject -}}
 {{$pathParams := .PathParams -}}
 {{$opid := .OperationId -}}
 {{$successResponse := getSuccessResponseTypeDefinition .}}
 {{$tag := .Tag -}}
-  func (f *service) {{$opid}}(ctx context.Context{{genParamArgs .PathParams}}{{range .Bodies}}, {{lcFirst $opid}}{{.Suffix}}Request *{{$opid}}{{.Suffix}}Request{{end}}) (*{{lower $tag}}api.{{$successResponse.Schema.GoType}}, error) {
-    v, err := f.repository.{{$opid}}(ctx{{genParamNames .PathParams}}{{range .Bodies}}, {{lcFirst $opid}}{{.Suffix}}Request{{end}})
+  {{$pathVariableDefs := ""}}
+  {{$pathVariableNames := ""}}
+  {{if isGet . -}}
+  {{$pathVariableDefs = genParamArgs .PathParams}}
+  {{$pathVariableNames = genParamNames .PathParams}}
+  {{end}}
+  func (f *service) {{$opid}}(ctx context.Context{{$pathVariableDefs}}{{range .Bodies}}, {{lcFirst $successResponse.Schema.GoType}} *{{$successResponse.Schema.GoType}}{{end}}) (*{{$successResponse.Schema.GoType}}, error) {
+    v, err := f.repository.{{$opid}}(ctx{{$pathVariableNames}}{{range .Bodies}}, {{lcFirst $successResponse.Schema.GoType}}{{end}})
     return v, err
   }
 {{end}}
