@@ -27,19 +27,19 @@ func AddHTTPRoutes(r *mux.Router, endpoints EndpointSet, logger log.Factory, tra
 // {{$opid}}
 
 func decode{{$opid}}EndpointRequest(_ context.Context, r *http.Request) (interface{}, error) {
-  {{range .Bodies}}var {{lcFirst .Schema.GoType}} {{lower $tag}}.{{.Schema.GoType}}{{end}}
+  var endpointRequest {{$opid}}EndpointRequest
   {{range .Bodies}}
-	if err := json.NewDecoder(r.Body).Decode(&{{lcFirst .Schema.GoType}}); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&endpointRequest.requestBody); err != nil {
 		return nil, err
 	}{{end}}
 
   {{if hasEndpointRequestVars $pathParams}}
 	vars := mux.Vars(r)
   {{end}}
-	request := {{$opid}}EndpointRequest{
-    {{genEndpointRequestVars $pathParams}} {{range .Bodies}}{{.Schema.GoType}}: &{{lcFirst .Schema.GoType}},{{end}}
-	}
-	return request, nil
+
+  {{genEndpointRequestVarSetters $pathParams}}
+
+	return endpointRequest, nil
 }
 {{end}}
 
