@@ -301,7 +301,7 @@ func GenerateGoSchemaWithNestedStructs(sref *openapi3.SchemaRef, path []string, 
 		}
 		return outSchema, nil
 	} else if len(schema.Enum) > 0 {
-		err := resolveType(schema, path, &outSchema)
+		err := resolveType(schema, path, &outSchema, useNestObjectTypes)
 		if err != nil {
 			return Schema{}, fmt.Errorf("error resolving primitive type: %w", err)
 		}
@@ -333,7 +333,7 @@ func GenerateGoSchemaWithNestedStructs(sref *openapi3.SchemaRef, path []string, 
 		}
 		//outSchema.RefType = typeName
 	} else {
-		err := resolveType(schema, path, &outSchema)
+		err := resolveType(schema, path, &outSchema, useNestObjectTypes)
 		if err != nil {
 			return Schema{}, fmt.Errorf("error resolving primitive type")
 		}
@@ -342,7 +342,7 @@ func GenerateGoSchemaWithNestedStructs(sref *openapi3.SchemaRef, path []string, 
 }
 
 // resolveType resolves primitive  type or array for schema
-func resolveType(schema *openapi3.Schema, path []string, outSchema *Schema) error {
+func resolveType(schema *openapi3.Schema, path []string, outSchema *Schema, useNestObjectTypes bool) error {
 	f := schema.Format
 	t := schema.Type
 
@@ -354,10 +354,36 @@ func resolveType(schema *openapi3.Schema, path []string, outSchema *Schema) erro
 		if err != nil {
 			return fmt.Errorf("error generating type for array: %w", err)
 		}
-		outSchema.ArrayType = &arrayType
-		outSchema.GoType = "[]" + arrayType.TypeDecl()
-		outSchema.AdditionalTypes = arrayType.AdditionalTypes
-		outSchema.Properties = arrayType.Properties
+		singularName := strings.TrimSuffix(PathToTypeName(path, ""), "s")
+		if useNestObjectTypes {
+			outSchema.GoType = "[]" + singularName
+		} else {
+			outSchema.GoType = "[]" + arrayType.TypeDecl()
+			outSchema.ArrayType = &arrayType
+			outSchema.AdditionalTypes = arrayType.AdditionalTypes
+			outSchema.Properties = arrayType.Properties
+		}
+		if useNestObjectTypes {
+			refSchema := Schema{
+				Description:     StringToGoComment(schema.Description),
+				OAPISchema:      schema,
+				GoType:          arrayType.TypeDecl(),
+				ArrayType:       &arrayType,
+				AdditionalTypes: arrayType.AdditionalTypes,
+				Properties:      arrayType.Properties,
+			}
+			// refSchema.NestedTypes = append(refSchema.NestedTypes, TypeDefinition{
+			// 	Schema:   *outSchema,
+			// 	TypeName: refSchema.GoType,
+			// 	JsonName: toSnakeCase(refSchema.GoType),
+			// })
+			outSchema.NestedTypes = append(outSchema.NestedTypes, TypeDefinition{
+				Schema:   refSchema,
+				TypeName: singularName,
+				JsonName: toSnakeCase(outSchema.GoType),
+			})
+			// outSchema = &refSchema
+		}
 	case "integer":
 		// We default to int if format doesn't ask for something else.
 		if f == "int64" {
