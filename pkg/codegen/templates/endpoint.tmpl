@@ -32,7 +32,7 @@ func NewEndpointSet(s Service, logger log.Factory, tracer opentracing.Tracer) En
 // {{$opid}} 
 
 {{range .Bodies -}}
-type {{$opid}}{{.Suffix}}EndpointRequestBody {{.Schema.GoType}}
+type {{$opid}}{{.Suffix}}EndpointRequestBody {{$opid}}
 
 {{end -}}
 

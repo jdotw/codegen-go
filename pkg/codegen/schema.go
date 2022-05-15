@@ -26,6 +26,8 @@ type Schema struct {
 
 	Description string // The description of the element
 
+	NestedTypes []TypeDefinition
+
 	// The original OpenAPIv3 Schema.
 	OAPISchema *openapi3.Schema
 }
@@ -139,6 +141,10 @@ func PropertiesEqual(a, b Property) bool {
 }
 
 func GenerateGoSchema(sref *openapi3.SchemaRef, path []string) (Schema, error) {
+	return GenerateGoSchemaWithNestedStructs(sref, path, false)
+}
+
+func GenerateGoSchemaWithNestedStructs(sref *openapi3.SchemaRef, path []string, useNestObjectTypes bool) (Schema, error) {
 	// Add a fallback value in case the sref is nil.
 	// i.e. the parent schema defines a type:array, but the array has
 	// no items defined. Therefore we have at least valid Go-Code.
@@ -226,7 +232,7 @@ func GenerateGoSchema(sref *openapi3.SchemaRef, path []string) (Schema, error) {
 			for _, pName := range SortedSchemaKeys(schema.Properties) {
 				p := schema.Properties[pName]
 				propertyPath := append(path, pName)
-				pSchema, err := GenerateGoSchema(p, propertyPath)
+				pSchema, err := GenerateGoSchemaWithNestedStructs(p, propertyPath, true)
 				if err != nil {
 					return Schema{}, fmt.Errorf("error generating Go schema for property '%s': %w", pName, err)
 				}
@@ -238,7 +244,7 @@ func GenerateGoSchema(sref *openapi3.SchemaRef, path []string) (Schema, error) {
 					// but are not a pre-defined type, we need to define a type
 					// for them, which will be based on the field names we followed
 					// to get to the type.
-					typeName := PathToTypeName(propertyPath)
+					typeName := PathToTypeName(propertyPath, "_")
 
 					typeDef := TypeDefinition{
 						TypeName: typeName,
@@ -261,6 +267,7 @@ func GenerateGoSchema(sref *openapi3.SchemaRef, path []string) (Schema, error) {
 					Nullable:       p.Value.Nullable,
 					ExtensionProps: &p.Value.ExtensionProps,
 				}
+				outSchema.NestedTypes = append(outSchema.NestedTypes, prop.Schema.NestedTypes...)
 				outSchema.Properties = append(outSchema.Properties, prop)
 			}
 
@@ -277,6 +284,20 @@ func GenerateGoSchema(sref *openapi3.SchemaRef, path []string) (Schema, error) {
 			}
 
 			outSchema.GoType = GenStructFromSchema(outSchema)
+
+			if useNestObjectTypes {
+				refSchema := Schema{
+					Description: StringToGoComment(schema.Description),
+					OAPISchema:  schema,
+					GoType:      PathToTypeName(path, ""),
+				}
+				refSchema.NestedTypes = append(refSchema.NestedTypes, TypeDefinition{
+					Schema:   outSchema,
+					TypeName: refSchema.GoType,
+					JsonName: toSnakeCase(refSchema.GoType),
+				})
+				outSchema = refSchema
+			}
 		}
 		return outSchema, nil
 	} else if len(schema.Enum) > 0 {
@@ -298,10 +319,10 @@ func GenerateGoSchema(sref *openapi3.SchemaRef, path []string) (Schema, error) {
 			} else {
 				constNamePath = append(path, k)
 			}
-			outSchema.EnumValues[SchemaNameToTypeName(PathToTypeName(constNamePath))] = v
+			outSchema.EnumValues[SchemaNameToTypeName(PathToTypeName(constNamePath, "_"))] = v
 		}
 		if len(path) > 1 { // handle additional type only on non-toplevel types
-			typeName := SchemaNameToTypeName(PathToTypeName(path))
+			typeName := SchemaNameToTypeName(PathToTypeName(path, "_"))
 			typeDef := TypeDefinition{
 				TypeName: typeName,
 				JsonName: strings.Join(path, "."),

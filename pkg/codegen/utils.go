@@ -532,11 +532,11 @@ func SchemaHasAdditionalProperties(schema *openapi3.Schema) bool {
 
 // This converts a path, like Object/field1/nestedField into a go
 // type name.
-func PathToTypeName(path []string) string {
+func PathToTypeName(path []string, separator string) string {
 	for i, p := range path {
 		path[i] = ToCamelCase(p)
 	}
-	return strings.Join(path, "_")
+	return strings.Join(path, separator)
 }
 
 // StringToGoComment renders a possible multi-line string as a valid Go-Comment.
