@@ -319,7 +319,7 @@ func getSuccessResponseTypeDefinition(op *OperationDefinition) *ResponseTypeDefi
 		panic(err)
 	}
 	for _, t := range td {
-		if t.TypeName == "JSON200" {
+		if strings.HasPrefix(t.TypeName, "JSON2") {
 			return &t
 		}
 	}
