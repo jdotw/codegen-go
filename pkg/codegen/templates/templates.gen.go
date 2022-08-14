@@ -73,6 +73,18 @@ func (a {{.TypeName}}) MarshalJSON() ([]byte, error) {
 }
 {{end}}
 `,
+	"catalog-info.yaml.tmpl": `apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: {{.Project}}
+  description: {{.Project}}
+  annotations:
+    argocd/app-name: {{.Project}}
+spec:
+  type: service
+  owner: jw@jameswilson.io
+  lifecycle: experimental
+`,
 	"client-with-responses.tmpl": `// ClientWithResponses builds on ClientInterface to offer response payloads
 type ClientWithResponses struct {
     ClientInterface
@@ -624,6 +636,7 @@ type {{$opid}}EndpointRequest struct {
 func make{{$opid}}Endpoint(s Service, logger log.Factory, tracer opentracing.Tracer) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		logger.For(ctx).Info("{{$tag}}.{{$opid}}Endpoint received request")
+    {{if $successResponse}}
 		er := request.({{$opid}}EndpointRequest)
     {{if isGet . -}}
 		v, err := s.{{$opid}}(ctx{{range .PathParams -}}, er.{{camelCase .ParamName}}{{end}})
@@ -657,6 +670,9 @@ func make{{$opid}}Endpoint(s Service, logger log.Factory, tracer opentracing.Tra
 			return &v, err
 		}
 		return &v, nil
+    {{else}}
+    // TODO: No response type could be determined, you'll need to write this yourself 
+    {{end}}
 	}
 }
 
@@ -951,7 +967,7 @@ func NewGormRepository(ctx context.Context, connString string, logger log.Factor
   	return &v, tx.Error
   {{end -}}
   {{if isOther . -}}
-  func (p *repository) {{$opid}}(ctx context.Context{{genParamArgs .PathParams}}{{range .Bodies}}, {{lcFirst $successResponse.Schema.GoType}} *{{$successResponse.Schema.GoType}}{{end}}) (*{{$successResponse.Schema.GoType}}, error) {
+  func (p *repository) {{$opid}}(ctx context.Context{{genParamArgs .PathParams}}{{range .Bodies}}, {{lcFirst $successResponse.Schema.GoType}} *{{$successResponse.Schema.GoType}}{{end}}) {{if $successResponse}}(*{{$successResponse.Schema.GoType}}, error){{else}}error{{end}} {
     // TODO: Unable to generate code for this Operation
     return nil, errors.New("Not Implemented")
   {{end -}}
@@ -969,7 +985,7 @@ type Repository interface {
 {{if isGet . -}}
   {{$opid}}(ctx context.Context{{genParamArgs .PathParams}}{{range .Bodies}}, {{lcFirst $successResponse.Schema.GoType}} *{{$successResponse.Schema.GoType}}{{end}}) (*{{$successResponse.Schema.GoType}}, error)
 {{else -}}
-  {{$opid}}(ctx context.Context{{range .Bodies}}, {{lcFirst $successResponse.Schema.GoType}} *{{$successResponse.Schema.GoType}}{{end}}) (*{{$successResponse.Schema.GoType}}, error)
+  {{$opid}}(ctx context.Context{{range .Bodies}}, {{lcFirst $successResponse.Schema.GoType}} *{{$successResponse.Schema.GoType}}{{end}}) {{if $successResponse}}(*{{$successResponse.Schema.GoType}}, error){{else}}error{{end}}
 {{end -}}
 {{end -}}
 }
@@ -996,7 +1012,7 @@ type Service interface {
 {{if isGet . -}}
 {{$pathVariableDefs = genParamArgs .PathParams -}}
 {{end -}}
-{{$opid}}(ctx context.Context{{$pathVariableDefs}}{{range .Bodies}}, {{lcFirst $successResponse.Schema.GoType}} *{{$successResponse.Schema.GoType}}{{end}}) (*{{$successResponse.Schema.GoType}}, error)
+{{$opid}}(ctx context.Context{{$pathVariableDefs}}{{range .Bodies}}, {{lcFirst $successResponse.Schema.GoType}} *{{$successResponse.Schema.GoType}}{{end}}) {{if $successResponse}}(*{{$successResponse.Schema.GoType}}, error){{else}}error{{end}}
 {{end -}}
 }
 
@@ -1026,7 +1042,7 @@ func NewService(repository Repository, logger log.Factory, tracer opentracing.Tr
   {{$pathVariableDefs = genParamArgs .PathParams}}
   {{$pathVariableNames = genParamNames .PathParams}}
   {{end}}
-  func (f *service) {{$opid}}(ctx context.Context{{$pathVariableDefs}}{{range .Bodies}}, {{lcFirst $successResponse.Schema.GoType}} *{{$successResponse.Schema.GoType}}{{end}}) (*{{$successResponse.Schema.GoType}}, error) {
+  func (f *service) {{$opid}}(ctx context.Context{{$pathVariableDefs}}{{range .Bodies}}, {{lcFirst $successResponse.Schema.GoType}} *{{$successResponse.Schema.GoType}}{{end}}) {{if $successResponse}}(*{{$successResponse.Schema.GoType}}, error){{else}}error{{end}} {
     v, err := f.repository.{{$opid}}(ctx{{$pathVariableNames}}{{range .Bodies}}, {{lcFirst $successResponse.Schema.GoType}}{{end}})
     return v, err
   }
