@@ -1,0 +1,11 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: {{.Project}}
+  description: {{.Project}}
+  annotations:
+    argocd/app-name: {{.Project}}
+spec:
+  type: service
+  owner: jw@jameswilson.io
+  lifecycle: experimental
