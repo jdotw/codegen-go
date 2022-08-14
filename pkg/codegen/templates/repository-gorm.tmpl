@@ -78,7 +78,7 @@ func NewGormRepository(ctx context.Context, connString string, logger log.Factor
   	return &v, tx.Error
   {{end -}}
   {{if isOther . -}}
-  func (p *repository) {{$opid}}(ctx context.Context{{genParamArgs .PathParams}}{{range .Bodies}}, {{lcFirst $successResponse.Schema.GoType}} *{{$successResponse.Schema.GoType}}{{end}}) (*{{$successResponse.Schema.GoType}}, error) {
+  func (p *repository) {{$opid}}(ctx context.Context{{genParamArgs .PathParams}}{{range .Bodies}}, {{lcFirst $successResponse.Schema.GoType}} *{{$successResponse.Schema.GoType}}{{end}}) {{if $successResponse}}(*{{$successResponse.Schema.GoType}}, error){{else}}error{{end}} {
     // TODO: Unable to generate code for this Operation
     return nil, errors.New("Not Implemented")
   {{end -}}

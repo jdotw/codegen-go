@@ -51,6 +51,7 @@ type {{$opid}}EndpointRequest struct {
 func make{{$opid}}Endpoint(s Service, logger log.Factory, tracer opentracing.Tracer) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		logger.For(ctx).Info("{{$tag}}.{{$opid}}Endpoint received request")
+    {{if $successResponse}}
 		er := request.({{$opid}}EndpointRequest)
     {{if isGet . -}}
 		v, err := s.{{$opid}}(ctx{{range .PathParams -}}, er.{{camelCase .ParamName}}{{end}})
@@ -84,6 +85,9 @@ func make{{$opid}}Endpoint(s Service, logger log.Factory, tracer opentracing.Tra
 			return &v, err
 		}
 		return &v, nil
+    {{else}}
+    // TODO: No response type could be determined, you'll need to write this yourself 
+    {{end}}
 	}
 }
 

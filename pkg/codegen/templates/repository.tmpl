@@ -8,7 +8,7 @@ type Repository interface {
 {{if isGet . -}}
   {{$opid}}(ctx context.Context{{genParamArgs .PathParams}}{{range .Bodies}}, {{lcFirst $successResponse.Schema.GoType}} *{{$successResponse.Schema.GoType}}{{end}}) (*{{$successResponse.Schema.GoType}}, error)
 {{else -}}
-  {{$opid}}(ctx context.Context{{range .Bodies}}, {{lcFirst $successResponse.Schema.GoType}} *{{$successResponse.Schema.GoType}}{{end}}) (*{{$successResponse.Schema.GoType}}, error)
+  {{$opid}}(ctx context.Context{{range .Bodies}}, {{lcFirst $successResponse.Schema.GoType}} *{{$successResponse.Schema.GoType}}{{end}}) {{if $successResponse}}(*{{$successResponse.Schema.GoType}}, error){{else}}error{{end}}
 {{end -}}
 {{end -}}
 }
