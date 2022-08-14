@@ -684,31 +684,38 @@ func GenerateTypesForPaths(t *template.Template, paths openapi3.Paths) ([]TypeDe
 		path := paths[k]
 		for _, o := range path.Operations() {
 			if o.RequestBody != nil && o.RequestBody.Value != nil {
-				s := o.RequestBody.Value.Content.Get("application/json").Schema
-				typeName := o.OperationID
-				if s != nil {
-					goType, err := GenerateGoSchemaWithNestedStructs(s, []string{typeName}, false)
-					if err != nil {
-						return nil, fmt.Errorf("error generating Go type for schema in response %s: %w", typeName, err)
-					}
+				b := o.RequestBody.Value.Content.Get("application/json")
+				if b == nil {
+					b = o.RequestBody.Value.Content.Get("application/json-patch+json")
+				}
+				if b != nil {
+					s := b.Schema
 
-					typeDef := TypeDefinition{
-						JsonName: typeName,
-						Schema:   goType,
-						TypeName: SchemaNameToTypeName(typeName),
-					}
-
-					if o.RequestBody.Ref != "" {
-						// Generate a reference type for referenced parameters
-						refType, err := RefPathToGoType(o.RequestBody.Ref)
+					typeName := o.OperationID
+					if s != nil {
+						goType, err := GenerateGoSchemaWithNestedStructs(s, []string{typeName}, false)
 						if err != nil {
-							return nil, fmt.Errorf("error generating Go type for (%s) in parameter %s: %w", o.RequestBody.Ref, typeName, err)
+							return nil, fmt.Errorf("error generating Go type for schema in response %s: %w", typeName, err)
 						}
-						typeDef.TypeName = SchemaNameToTypeName(refType)
-					}
-					types = append(types, typeDef)
 
-					types = append(types, goType.NestedTypes...)
+						typeDef := TypeDefinition{
+							JsonName: typeName,
+							Schema:   goType,
+							TypeName: SchemaNameToTypeName(typeName),
+						}
+
+						if o.RequestBody.Ref != "" {
+							// Generate a reference type for referenced parameters
+							refType, err := RefPathToGoType(o.RequestBody.Ref)
+							if err != nil {
+								return nil, fmt.Errorf("error generating Go type for (%s) in parameter %s: %w", o.RequestBody.Ref, typeName, err)
+							}
+							typeDef.TypeName = SchemaNameToTypeName(refType)
+						}
+						types = append(types, typeDef)
+
+						types = append(types, goType.NestedTypes...)
+					}
 				}
 			}
 		}
