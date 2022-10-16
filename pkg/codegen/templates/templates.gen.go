@@ -522,8 +522,8 @@ services:
       JAEGER_AGENT_HOST: jaeger
       JAEGER_AGENT_PORT: 6831
     networks:
-      - baas-{{ .ClusterName }}_db
-      - baas-{{ .ClusterName }}_telemetry
+      - {{ .ClusterName }}_db
+      - {{ .ClusterName }}_telemetry
     restart: unless-stopped
   opa:
     image: openpolicyagent/opa:0.13.2
@@ -545,9 +545,9 @@ services:
       {{end}}
 
 networks:
-  baas-{{ .ClusterName }}_db:
+  {{ .ClusterName }}_db:
     external: true
-  baas-{{ .ClusterName }}_telemetry:
+  {{ .ClusterName }}_telemetry:
     external: true
 `,
 	"dockerfile.tmpl": `FROM golang AS build
@@ -560,8 +560,8 @@ ARG GITHUB_USER
 ARG GITHUB_PAT
 RUN echo "machine github.com login ${GITHUB_USER} password ${GITHUB_PAT}" > ~/.netrc
 RUN chmod 0600 ~/.netrc 
-RUN GOPRIVATE='github.com/12kmps/*' go mod tidy -compat=1.17
-RUN GOPRIVATE='github.com/12kmps/*' go mod download 
+RUN GOPRIVATE='github.com/jdotw/*' go mod tidy -compat=1.17
+RUN GOPRIVATE='github.com/jdotw/*' go mod download 
 RUN CGO_ENABLED=0 go build -o app .
 
 ##
@@ -680,7 +680,7 @@ func make{{$opid}}Endpoint(s Service, logger log.Factory, tracer opentracing.Tra
 
 `,
 	"gitignore.tmpl": `.env`,
-	"go.mod.tmpl": `module github.com/12kmps/baas-{{.}}
+	"go.mod.tmpl": `module github.com/jdotw/{{.}}
 
 go 1.17
 
@@ -721,10 +721,10 @@ import (
 	"github.com/jdotw/codegen-go/pkg/runtime"
 	openapi_types "github.com/jdotw/codegen-go/pkg/types"
 
-  "github.com/12kmps/baas/log"
-	"github.com/12kmps/baas/tracing"
-  "github.com/12kmps/baas/authn/jwt"
-	"github.com/12kmps/baas/transport"
+  "github.com/jdotw/go-utils/log"
+	"github.com/jdotw/go-utils/tracing"
+  "github.com/jdotw/go-utils/authn/jwt"
+	"github.com/jdotw/go-utils/transport"
 	"go.uber.org/zap"
 	"github.com/go-kit/kit/endpoint"
 	kittracing "github.com/go-kit/kit/tracing/opentracing"

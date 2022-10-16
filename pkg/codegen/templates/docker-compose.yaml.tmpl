@@ -14,8 +14,8 @@ services:
       JAEGER_AGENT_HOST: jaeger
       JAEGER_AGENT_PORT: 6831
     networks:
-      - baas-{{ .ClusterName }}_db
-      - baas-{{ .ClusterName }}_telemetry
+      - {{ .ClusterName }}_db
+      - {{ .ClusterName }}_telemetry
     restart: unless-stopped
   opa:
     image: openpolicyagent/opa:0.13.2
@@ -37,7 +37,7 @@ services:
       {{end}}
 
 networks:
-  baas-{{ .ClusterName }}_db:
+  {{ .ClusterName }}_db:
     external: true
-  baas-{{ .ClusterName }}_telemetry:
+  {{ .ClusterName }}_telemetry:
     external: true
