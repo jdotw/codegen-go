@@ -28,7 +28,7 @@ write a lot of boilerplate code to perform all the marshalling and unmarshalling
 into objects which match the OpenAPI 3.0 definition. The code generator in this
 directory does a lot of that for you. You would run it like so:
 
-    go get github.com/12kmps/codegen-go/cmd/oapi-codegen
+    go get github.com/jdotw/codegen-go/cmd/oapi-codegen
     oapi-codegen petstore-expanded.yaml  > petstore.gen.go
 
 Let's go through that `petstore.gen.go` file to show you everything which was
@@ -210,8 +210,8 @@ func RegisterHandlersWithOptions(router *gin.Engine, si ServerInterface, options
 ```go
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/12kmps/codegen-go/examples/petstore-expanded/gin/api"
-	middleware "github.com/12kmps/codegen-go/pkg/gin-middleware"
+	"github.com/jdotw/codegen-go/examples/petstore-expanded/gin/api"
+	middleware "github.com/jdotw/codegen-go/pkg/gin-middleware"
 )
 
 type PetStoreImpl struct {}
@@ -432,7 +432,7 @@ which help you to use the various OpenAPI 3 Authentication mechanism.
 
 ```
     import (
-        "github.com/12kmps/codegen-go/pkg/securityprovider"
+        "github.com/jdotw/codegen-go/pkg/securityprovider"
     )
 
     func CreateSampleProviders() error {
@@ -553,7 +553,7 @@ in the openapi spec.
 Since `go generate` commands must be a single line, all the options above can make
 them pretty unwieldy, so you can specify all of the options in a configuration
 file via the `--config` option. Please see the test under
-[`/internal/test/externalref/`](https://github.com/12kmps/codegen-go/blob/master/internal/test/externalref/externalref.cfg.yaml)
+[`/internal/test/externalref/`](https://github.com/jdotw/codegen-go/blob/master/internal/test/externalref/externalref.cfg.yaml)
 for an example. The structure of the file is as follows:
 
 ```yaml
@@ -563,11 +563,11 @@ generate:
   - types
   - skip-prune
 import-mapping:
-  ./packageA/spec.yaml: github.com/12kmps/codegen-go/internal/test/externalref/packageA
-  ./packageB/spec.yaml: github.com/12kmps/codegen-go/internal/test/externalref/packageB
+  ./packageA/spec.yaml: github.com/jdotw/codegen-go/internal/test/externalref/packageA
+  ./packageB/spec.yaml: github.com/jdotw/codegen-go/internal/test/externalref/packageB
 ```
 
-Have a look at [`cmd/oapi-codegen/oapi-codegen.go`](https://github.com/12kmps/codegen-go/blob/master/cmd/oapi-codegen/oapi-codegen.go#L48)
+Have a look at [`cmd/oapi-codegen/oapi-codegen.go`](https://github.com/jdotw/codegen-go/blob/master/cmd/oapi-codegen/oapi-codegen.go#L48)
 to see all the fields on the configuration structure.
 
 ### Import Mappings

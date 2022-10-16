@@ -7,8 +7,8 @@ package codegen
 // 	"net/http"
 // 	"testing"
 
-// 	examplePetstoreClient "github.com/12kmps/codegen-go/examples/petstore-expanded"
-// 	examplePetstore "github.com/12kmps/codegen-go/examples/petstore-expanded/echo/api"
+// 	examplePetstoreClient "github.com/jdotw/codegen-go/examples/petstore-expanded"
+// 	examplePetstore "github.com/jdotw/codegen-go/examples/petstore-expanded/echo/api"
 // 	"github.com/getkin/kin-openapi/openapi3"
 // 	"github.com/golangci/lint-1"
 // 	"github.com/stretchr/testify/assert"

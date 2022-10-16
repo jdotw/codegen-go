@@ -23,7 +23,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/12kmps/codegen-go/pkg/types"
+	"github.com/jdotw/codegen-go/pkg/types"
 )
 
 // This function binds a parameter as described in the Path Parameters

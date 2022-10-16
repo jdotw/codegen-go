@@ -20,7 +20,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/12kmps/codegen-go/pkg/types"
+	"github.com/jdotw/codegen-go/pkg/types"
 )
 
 // This function takes a string, and attempts to assign it to the destination

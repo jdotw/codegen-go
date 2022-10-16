@@ -3,7 +3,7 @@ package securityprovider
 import (
 	"testing"
 
-	"github.com/12kmps/codegen-go/internal/test/client"
+	"github.com/jdotw/codegen-go/internal/test/client"
 	"github.com/stretchr/testify/assert"
 )
 

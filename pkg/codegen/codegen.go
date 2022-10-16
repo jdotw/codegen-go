@@ -27,8 +27,8 @@ import (
 	"github.com/getkin/kin-openapi/openapi3"
 	"golang.org/x/tools/imports"
 
-	"github.com/12kmps/codegen-go/pkg/codegen/templates"
-	"github.com/12kmps/codegen-go/pkg/util"
+	"github.com/jdotw/codegen-go/pkg/codegen/templates"
+	"github.com/jdotw/codegen-go/pkg/util"
 )
 
 // Options defines the optional code to generate.

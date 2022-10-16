@@ -1,4 +1,4 @@
-module github.com/12kmps/codegen-go
+module github.com/jdotw/codegen-go
 
 require (
 	github.com/cyberdelia/templates v0.0.0-20141128023046-ca7fffd4298c

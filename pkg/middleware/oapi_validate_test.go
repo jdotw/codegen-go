@@ -22,7 +22,7 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/12kmps/codegen-go/pkg/testutil"
+	"github.com/jdotw/codegen-go/pkg/testutil"
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/getkin/kin-openapi/openapi3filter"
 	"github.com/labstack/echo/v4"

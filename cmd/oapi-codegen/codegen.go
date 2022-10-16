@@ -25,8 +25,8 @@ import (
 
 	"gopkg.in/yaml.v2"
 
-	"github.com/12kmps/codegen-go/pkg/codegen"
-	"github.com/12kmps/codegen-go/pkg/util"
+	"github.com/jdotw/codegen-go/pkg/codegen"
+	"github.com/jdotw/codegen-go/pkg/util"
 	"github.com/iancoleman/strcase"
 )
 
